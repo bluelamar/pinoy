@@ -1,0 +1,3 @@
+
+currently css link header is served by the web svc - may need to change that later to be served by nginx
+

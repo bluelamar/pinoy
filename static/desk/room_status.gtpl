@@ -15,11 +15,11 @@
 <p>Table of rooms</p>
 <table>
 <tr>
-<th>Room Number</th><th>Room Status</th><th>Registration</th><th>Guest Name</th><th>Guest Check in date and time</th>
+<th>Room Number</th><th>Room Status</th><th>Registration</th><th>Guest Name</th><th>Guest Check in time</th><th>Purchase Items</th>
 </tr>
 {{range .RoomTable}}
 <tr>
-<td>{{.Num}}</td><td>{{.Status}}</td><td><a id="registration" class="button" href="/desk/register?room={{.Num}}">Register</a></td><td>{{.GuestInfo}}</td><td>{{.CheckinTime}}</td>
+<td>{{.Num}}</td><td>{{.Status}}</td><td><a id="registration" class="button" href="/desk/register?room={{.Num}}">Register</a></td><td>{{.GuestInfo}}</td><td>{{.CheckinTime}}</td><td><a id="purchase" class="button" href="/desk/food?room={{.Num}}">Purchase</a></td>
 </tr>
 {{else}}
 No Rooms to report

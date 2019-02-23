@@ -20,7 +20,7 @@
 {{$room_num:=.Room}}
 {{range .FoodData}}
 <tr>
-<td>{{.Item}}</td><td>{{.Size}}</td><td>{{.Price}}</td><td><a id="purchase" class="button" href="/desk/purchase?item={{.Item}}&size={{.Size}}&room={{$room_num}}">Purchase</a></td>
+<td>{{.Item}}</td><td>{{.Size}}</td><td>{{.Price}}</td><td><a id="purchase" class="button" href="/desk/purchase?item={{.Item}}&size={{.Size}}&price={{.Price}}&room={{$room_num}}">Purchase</a></td>
 </tr>
 {{else}}
 No food items to report

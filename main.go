@@ -393,12 +393,18 @@ func purchase(w http.ResponseWriter, r *http.Request) {
 		size := ""
 		sizes, ok := r.URL.Query()["size"]
 		if !ok || len(sizes[0]) < 1 {
-			log.Println("purchase: Url Param 'item' is missing")
+			log.Println("purchase: Url Param 'size' is missing")
 		} else {
 			size = sizes[0]
 		}
 
 		price := "" // get price for item
+		prices, ok := r.URL.Query()["price"]
+		if !ok || len(prices[0]) < 1 {
+			log.Println("purchase: Url Param 'price' is missing")
+		} else {
+			price = prices[0]
+		}
 
 		fmt.Printf("purchase: room=%s item=%s size=%s price=%s\n", room, item, size, price)
 

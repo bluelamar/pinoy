@@ -10,10 +10,16 @@
 
   <form action="/desk/register" method="post">
     <legend>Check In</legend>
-    <input placeholder="First Name" label="false" spellcheck="false" class="is-sensitive" value="" name="first_name" id="first_name" />
-    <input placeholder="Last Name" label="false" spellcheck="false" class="is-sensitive"  value="" name="last_name" id="last_name" />
-    <input placeholder="Duration" label="false" spellcheck="false" class="is-sensitive"  value="" name="duration" id="duration" />
-    <input type="hidden" id="room_num" name="room_num" value="{{.RoomNum}}">
+    <table>
+    <tr><td>First Name</td><td>
+    <input required placeholder="First Name" label="false" spellcheck="false" class="is-sensitive" value="" name="first_name" id="first_name" />
+    </td></tr><tr><td>Last Name</td><td>
+    <input required placeholder="Last Name" label="false" spellcheck="false" class="is-sensitive"  value="" name="last_name" id="last_name" />
+    </td></tr><tr><td>Duration</td><td>
+    <input required placeholder="Duration" label="false" spellcheck="false" class="is-sensitive"  value="" name="duration" id="duration" />
+    </td></tr><tr><td>Room Number</td><td>
+    <input required placeholder="Room Number" id="room_num" name="room_num" value="{{.RoomNum}}">
+    </td></tr></table>
     <input type="submit" name="commit" value="Register" />
   </form>
 

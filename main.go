@@ -202,6 +202,19 @@ type RoomData struct {
 func room_status(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("room_status:method:", r.Method)
 
+	open_rooms_only := false
+	open_rooms, ok := r.URL.Query()["register"]
+	if !ok || len(open_rooms[0]) < 1 {
+		log.Println("register: Url Param 'register' is missing")
+	}
+
+	if len(open_rooms) > 0 {
+		open_room := open_rooms[0]
+		if open_room == "yes" {
+			open_rooms_only = true
+		}
+	}
+
 	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/room_status.gtpl", "static/header.gtpl")
 	if err != nil {
 		fmt.Printf("room_status: err: %s", err.Error())
@@ -220,10 +233,26 @@ func room_status(w http.ResponseWriter, r *http.Request) {
 			GuestInfo:   "ray",
 			CheckinTime: "feb 9, 2019: 14:30pm",
 		}
+		a3 := RoomState{
+			Num:         117,
+			Status:      "open",
+			GuestInfo:   "rich",
+			CheckinTime: "feb 19, 2019: 22:30pm",
+		}
 
-		rtbl := make([]RoomState, 2)
+		num_rooms := 3
+		if open_rooms_only {
+			num_rooms = 2
+		}
+
+		rtbl := make([]RoomState, num_rooms)
 		rtbl[0] = a1
-		rtbl[1] = a2
+		if open_rooms_only {
+			rtbl[1] = a3
+		} else {
+			rtbl[1] = a2
+			rtbl[2] = a3
+		}
 
 		roomData := RoomData{
 			sessDetails,
@@ -250,15 +279,13 @@ func register(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("register:method=%s time=%s\n", r.Method, t.Local())
 
 	if r.Method == "GET" {
-		rooms, ok := r.URL.Query()["room"]
 
+		rooms, ok := r.URL.Query()["room"]
 		if !ok || len(rooms[0]) < 1 {
 			log.Println("register: Url Param 'room' is missing")
 			return
 		}
-
-		// Query()["room"] will return an array of items,
-		// we only want the single item.
+		// Query()["room"] will return an array of items, we only want the single item.
 		room := rooms[0]
 
 		fmt.Printf("register: room=%s\n", room)
@@ -294,8 +321,8 @@ func register(w http.ResponseWriter, r *http.Request) {
 		// TODO set in db
 		fmt.Printf("register: first-name=%s last-name=%s room-num=%s duration=%s\n", fname, lname, room_num, duration)
 
-		fmt.Printf("register: post about to redirect to room_status\n")
-		http.Redirect(w, r, "/desk/room_status", http.StatusFound)
+		fmt.Printf("register: post about to redirect to room_hop for room=%s\n", room_num)
+		http.Redirect(w, r, "/desk/room_hop?room="+room_num[0], http.StatusFound)
 	}
 }
 
@@ -453,6 +480,147 @@ func purchase(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func room_hop(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("room_hop:method:", r.Method)
+	// item size room
+	// for get - prefill fields based on query parameters
+	if r.Method == "GET" {
+
+		room := ""
+		rooms, ok := r.URL.Query()["room"]
+		if !ok || len(rooms[0]) < 1 {
+			log.Println("room_hop: Url Param 'room' is missing")
+		} else {
+			room = rooms[0]
+		}
+
+		fmt.Printf("room_hop: room=%s\n", room)
+
+		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/room_hop.gtpl", "static/header.gtpl")
+		if err != nil {
+			fmt.Printf("room_hop:err: %s", err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			sessDetails := get_sess_details(r, "Room Bell Hop", "Bell Hop page of Pinoy Lodge")
+			regData := RegisterData{
+				sessDetails,
+				room,
+			}
+			err = t.Execute(w, regData)
+			if err != nil {
+				fmt.Println("room_hop err=", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+	} else {
+		fmt.Println("room_hop: should be post")
+		r.ParseForm()
+		for k, v := range r.Form {
+			fmt.Println("key:", k)
+			fmt.Println("val:", strings.Join(v, ""))
+		}
+
+		bell_hop_pin := r.Form["bell_hop_pin"]
+		room_num := r.Form["room_num"]
+
+		// TODO set in db
+		fmt.Printf("room_hop: bell-hop-pin=%s room-num=%s\n", bell_hop_pin, room_num)
+
+		fmt.Printf("room_hop: post about to redirect to room_status\n")
+		http.Redirect(w, r, "/desk/room_status", http.StatusFound)
+	}
+}
+
+type UpdateRoom struct {
+	*SessionDetails
+	RoomDetails
+}
+
+func upd_room(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("upd_room:method:", r.Method)
+	// item size room
+	// for get - prefill fields based on query parameters
+	if r.Method == "GET" {
+
+		room := ""
+		rooms, ok := r.URL.Query()["room"]
+		if !ok || len(rooms[0]) < 1 {
+			log.Println("upd_room: Url Param 'room' is missing")
+		} else {
+			room = rooms[0]
+		}
+
+		update := ""
+		updates, ok := r.URL.Query()["update"]
+		if !ok || len(updates[0]) < 1 {
+			log.Println("upd_room: Url Param 'update' is missing")
+		} else {
+			update = updates[0]
+		}
+
+		delete_room := false
+		if update == "delete" {
+			delete_room = true
+		}
+
+		fmt.Printf("upd_room: room=%s update=%s\n", room, update)
+
+		if delete_room {
+			// TODO delete specified room - error if room is not set
+			if room == "" {
+				http.Error(w, "Room number not specified", http.StatusBadRequest)
+			}
+			fmt.Printf("upd_room: delete room=%s\n", room)
+			http.Redirect(w, r, "/desk/room_status", http.StatusFound)
+		}
+
+		// TODO get the room details from the db
+
+		// user wants to add or update existing room
+		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/upd_room.gtpl", "static/header.gtpl")
+		if err != nil {
+			fmt.Printf("upd_room:err: %s", err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			sessDetails := get_sess_details(r, "Update Room", "Update Room page of Pinoy Lodge")
+			roomData := RoomDetails{
+				room,
+				1,
+				"queen",
+			}
+			updData := UpdateRoom{
+				sessDetails,
+				roomData,
+			}
+			err = t.Execute(w, updData)
+			if err != nil {
+				fmt.Println("upd_room err=", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+	} else {
+		fmt.Println("upd_room: should be post")
+		r.ParseForm()
+		for k, v := range r.Form {
+			fmt.Println("key:", k)
+			fmt.Println("val:", strings.Join(v, ""))
+		}
+
+		bell_hop_pin := r.Form["bell_hop_pin"]
+		room_num := r.Form["room_num"]
+
+		// TODO set in db
+		fmt.Printf("upd_room: bell-hop-pin=%s room-num=%s\n", bell_hop_pin, room_num)
+
+		fmt.Printf("upd_room: post about to redirect to room_status\n")
+		http.Redirect(w, r, "/desk/room_status", http.StatusFound)
+	}
+}
+
+func staff(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("upd_room:method:", r.Method)
+}
+
 func get_sess_details(r *http.Request, title, desc string) *SessionDetails {
 
 	sess := sess_attrs(r)
@@ -528,8 +696,11 @@ func main() {
 	http.HandleFunc("/signout", signout)
 	http.HandleFunc("/desk/room_status", room_status)
 	http.HandleFunc("/desk/register", register)
+	http.HandleFunc("/desk/room_hop", room_hop)
 	http.HandleFunc("/desk/food", food)
 	http.HandleFunc("/desk/purchase", purchase)
+	http.HandleFunc("/manager/staff", staff)
+	http.HandleFunc("/manager/upd_room", upd_room)
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("static/css"))))
 	err := http.ListenAndServe(":8080", context.ClearHandler(http.DefaultServeMux)) // setting listening port
 	if err != nil {

@@ -226,18 +226,21 @@ func room_status(w http.ResponseWriter, r *http.Request) {
 			Status:      "open",
 			GuestInfo:   "robby",
 			CheckinTime: "mar 1, 2019: 08:42am",
+			Rate:        "C",
 		}
 		a2 := RoomState{
 			Num:         101,
 			Status:      "occupied",
 			GuestInfo:   "ray",
 			CheckinTime: "feb 9, 2019: 14:30pm",
+			Rate:        "B",
 		}
 		a3 := RoomState{
 			Num:         117,
 			Status:      "open",
 			GuestInfo:   "rich",
 			CheckinTime: "feb 19, 2019: 22:30pm",
+			Rate:        "B",
 		}
 
 		num_rooms := 3
@@ -331,6 +334,7 @@ type FoodItem struct {
 	Size     string
 	Price    string
 	Quantity int
+	Id       string
 }
 type FoodTable struct {
 	*SessionDetails
@@ -365,11 +369,13 @@ func food(w http.ResponseWriter, r *http.Request) {
 			Item:  "San Miguel beer",
 			Size:  "large",
 			Price: "$2.50",
+			Id:    "a1",
 		}
 		a2 := FoodItem{
 			Item:  "Buko Pandan",
 			Size:  "small",
 			Price: "$4.75",
+			Id:    "a2",
 		}
 
 		ftbl := make([]FoodItem, 2)
@@ -393,6 +399,34 @@ type FoodRecord struct {
 	*SessionDetails
 	FoodData FoodItem
 	Room     string
+}
+
+func upd_food(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("upd_food:method:", r.Method)
+	if r.Method != "POST" {
+		fmt.Printf("upd_food: bad http method: should only be a POST\n")
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	r.ParseForm()
+	for k, v := range r.Form {
+		fmt.Println("key:", k)
+		fmt.Println("val:", strings.Join(v, ""))
+	}
+
+	item := r.Form["item"]
+	size := r.Form["size"]
+	id := r.Form["id"]
+	cost := r.Form["cost"]
+
+	// TODO if no id create unique id
+	// verify all fields are set
+
+	// TODO set in db
+	fmt.Printf("upd_food: item=%s size=%s cost=%s id=%s\n", item, size, cost, id)
+
+	fmt.Printf("upd_food: post about to redirect to food\n")
+	http.Redirect(w, r, "/desk/food", http.StatusFound)
 }
 
 func purchase(w http.ResponseWriter, r *http.Request) {
@@ -433,7 +467,15 @@ func purchase(w http.ResponseWriter, r *http.Request) {
 			price = prices[0]
 		}
 
-		fmt.Printf("purchase: room=%s item=%s size=%s price=%s\n", room, item, size, price)
+		id := "" // unique id for item
+		ids, ok := r.URL.Query()["price"]
+		if !ok || len(ids[0]) < 1 {
+			log.Println("purchase: Url Param 'id' is missing")
+		} else {
+			id = ids[0]
+		}
+
+		fmt.Printf("purchase: room=%s item=%s size=%s price=%s id=%s\n", room, item, size, price, id)
 
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/purchase.gtpl", "static/header.gtpl")
 		if err != nil {
@@ -447,6 +489,7 @@ func purchase(w http.ResponseWriter, r *http.Request) {
 				Size:  size,
 				Price: price,
 				//Quantity: 3,
+				Id: id,
 			}
 			foodData := FoodRecord{
 				sessDetails,
@@ -470,10 +513,11 @@ func purchase(w http.ResponseWriter, r *http.Request) {
 		item := r.Form["item"]
 		size := r.Form["size"]
 		quantity := r.Form["quantity"]
+		id := r.Form["id"]
 		room_num := r.Form["room_num"]
 
 		// TODO set in db
-		fmt.Printf("purchase: item=%s size=%s quantity=%s room-num=%s\n", item, size, quantity, room_num)
+		fmt.Printf("purchase: item=%s size=%s quantity=%s room-num=%s id=%s\n", item, size, quantity, room_num, id)
 
 		fmt.Printf("purchase: post about to redirect to room_status\n")
 		http.Redirect(w, r, "/desk/room_status", http.StatusFound)
@@ -531,94 +575,172 @@ func room_hop(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type UpdateRoom struct {
+type Employee struct {
+	Last   string
+	First  string
+	Middle string
+	Salary string
+}
+type EmpTable struct {
 	*SessionDetails
-	RoomDetails
+	Staff []Employee
 }
 
-func upd_room(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("upd_room:method:", r.Method)
+func staff(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("staff:method:", r.Method)
+
+	if r.Method != "GET" {
+		fmt.Printf("staff: bad http method: should only be a GET\n")
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/staff.gtpl", "static/header.gtpl")
+	if err != nil {
+		fmt.Printf("staff: err: %s\n", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+		sessDetails := get_sess_details(r, "Staff", "Staff page to Pinoy Lodge")
+		a1 := Employee{
+			Last:   "Fuentes",
+			First:  "Mario",
+			Middle: "T",
+			Salary: "$2.50",
+		}
+		a2 := Employee{
+			Last:   "Johnson",
+			First:  "Jay",
+			Middle: "R",
+			Salary: "$2.75",
+		}
+
+		emps := make([]Employee, 2)
+		emps[0] = a1
+		emps[1] = a2
+
+		tblData := EmpTable{
+			sessDetails,
+			emps,
+		}
+		err = t.Execute(w, &tblData)
+		if err != nil {
+			fmt.Println("staff: err=", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+}
+
+type UpdateEmployee struct {
+	*SessionDetails
+	Employee
+}
+
+func upd_staff(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("upd_staff:method:", r.Method)
 	// item size room
 	// for get - prefill fields based on query parameters
 	if r.Method == "GET" {
 
-		room := ""
-		rooms, ok := r.URL.Query()["room"]
-		if !ok || len(rooms[0]) < 1 {
-			log.Println("upd_room: Url Param 'room' is missing")
+		lname := ""
+		lnames, ok := r.URL.Query()["last"]
+		if !ok || len(lnames[0]) < 1 {
+			log.Println("upd_staff: Url Param 'last' is missing")
 		} else {
-			room = rooms[0]
+			lname = lnames[0]
+		}
+
+		fname := ""
+		fnames, ok := r.URL.Query()["first"]
+		if !ok || len(fnames[0]) < 1 {
+			log.Println("upd_staff: Url Param 'first' is missing")
+		} else {
+			fname = fnames[0]
+		}
+
+		mname := ""
+		mnames, ok := r.URL.Query()["middle"]
+		if !ok || len(mnames[0]) < 1 {
+			log.Println("upd_staff: Url Param 'middle' is missing")
+		} else {
+			mname = mnames[0]
+		}
+
+		salary := ""
+		salaries, ok := r.URL.Query()["salary"]
+		if !ok || len(salaries[0]) < 1 {
+			log.Println("upd_staff: Url Param 'salary' is missing")
+		} else {
+			salary = salaries[0]
 		}
 
 		update := ""
 		updates, ok := r.URL.Query()["update"]
 		if !ok || len(updates[0]) < 1 {
-			log.Println("upd_room: Url Param 'update' is missing")
+			log.Println("upd_staff: Url Param 'update' is missing")
 		} else {
 			update = updates[0]
 		}
 
-		delete_room := false
+		delete_emp := false
 		if update == "delete" {
-			delete_room = true
+			delete_emp = true
 		}
 
-		fmt.Printf("upd_room: room=%s update=%s\n", room, update)
+		fmt.Printf("upd_staff: last=%s first=%s middle=%s salary=%s update=%s\n", lname, fname, mname, salary, update)
 
-		if delete_room {
-			// TODO delete specified room - error if room is not set
-			if room == "" {
-				http.Error(w, "Room number not specified", http.StatusBadRequest)
+		if delete_emp {
+			// TODO delete specified room - error if name is not set
+			if lname == "" {
+				http.Error(w, "Name not specified", http.StatusBadRequest)
 			}
-			fmt.Printf("upd_room: delete room=%s\n", room)
-			http.Redirect(w, r, "/desk/room_status", http.StatusFound)
+			fmt.Printf("upd_staff: delete employee=%s, %s %s\n", lname, fname, mname)
+			http.Redirect(w, r, "/manager/staff", http.StatusFound)
 		}
 
 		// TODO get the room details from the db
 
 		// user wants to add or update existing room
-		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/upd_room.gtpl", "static/header.gtpl")
+		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/staff.gtpl", "static/header.gtpl")
 		if err != nil {
-			fmt.Printf("upd_room:err: %s", err.Error())
+			fmt.Printf("upd_staff:err: %s", err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {
-			sessDetails := get_sess_details(r, "Update Room", "Update Room page of Pinoy Lodge")
-			roomData := RoomDetails{
-				room,
-				1,
-				"queen",
+			sessDetails := get_sess_details(r, "Update Employee", "Update Employee page of Pinoy Lodge")
+			empData := Employee{
+				lname,
+				fname,
+				mname,
+				salary,
 			}
-			updData := UpdateRoom{
+			updData := UpdateEmployee{
 				sessDetails,
-				roomData,
+				empData,
 			}
 			err = t.Execute(w, updData)
 			if err != nil {
-				fmt.Println("upd_room err=", err)
+				fmt.Println("upd_staff err=", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		}
 	} else {
-		fmt.Println("upd_room: should be post")
+		fmt.Println("upd_staff: should be post")
 		r.ParseForm()
 		for k, v := range r.Form {
 			fmt.Println("key:", k)
 			fmt.Println("val:", strings.Join(v, ""))
 		}
 
-		bell_hop_pin := r.Form["bell_hop_pin"]
-		room_num := r.Form["room_num"]
+		lname := r.Form["last"]
+		fname := r.Form["first"]
+		mname := r.Form["middle"]
+		salary := r.Form["salary"]
 
 		// TODO set in db
-		fmt.Printf("upd_room: bell-hop-pin=%s room-num=%s\n", bell_hop_pin, room_num)
+		fmt.Printf("upd_staff: last=%s first=%s middle=%s salary=%s\n", lname, fname, mname, salary)
 
-		fmt.Printf("upd_room: post about to redirect to room_status\n")
-		http.Redirect(w, r, "/desk/room_status", http.StatusFound)
+		fmt.Printf("upd_staff: post about to redirect to staff\n")
+		http.Redirect(w, r, "/manager/staff", http.StatusFound)
 	}
-}
-
-func staff(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("upd_room:method:", r.Method)
 }
 
 func get_sess_details(r *http.Request, title, desc string) *SessionDetails {
@@ -690,7 +812,7 @@ func main() {
 	store.Options = storeOptions
 
 	// setup routes
-	http.HandleFunc("/", frontpage) // FIX welcome) // setting router rule
+	http.HandleFunc("/", frontpage)
 	http.HandleFunc("/frontpage", frontpage)
 	http.HandleFunc("/signin", signin)
 	http.HandleFunc("/signout", signout)
@@ -699,8 +821,12 @@ func main() {
 	http.HandleFunc("/desk/room_hop", room_hop)
 	http.HandleFunc("/desk/food", food)
 	http.HandleFunc("/desk/purchase", purchase)
+	http.HandleFunc("/manager/upd_food", upd_food)
 	http.HandleFunc("/manager/staff", staff)
+	http.HandleFunc("/manager/upd_staff", upd_staff)
 	http.HandleFunc("/manager/upd_room", upd_room)
+	http.HandleFunc("/manager/room_rates", room_rates)
+	http.HandleFunc("/manager/upd_room_rate", upd_room_rate)
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("static/css"))))
 	err := http.ListenAndServe(":8080", context.ClearHandler(http.DefaultServeMux)) // setting listening port
 	if err != nil {

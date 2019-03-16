@@ -11,7 +11,7 @@
       <li><a href="/desk/room_status">Room Status</a></li>
       <li><a href="/desk/food">Food and Drink</a></li>
       {{if eq .Sess.Role "Manager"}}
-      <p>Manager Actions</p>
+      <p>Managerial Actions</p>
       <li><a href="/manager/staff">Staff</a></li>
       <li><a href="/manager/room_rates">Room Rates</a></li>
       {{end}}

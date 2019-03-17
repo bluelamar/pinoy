@@ -20,6 +20,9 @@ import (
 // crypto/rand or securecookie.GenerateRandomKey(32) and persist the result
 var store = sessions.NewCookieStore([]byte("something-very-secret"))
 
+var PCfg *PinoyConfig
+var PDb *DBInterface
+
 const CookieNameSID string = "PinoySID"
 
 // signout revokes authentication for a user
@@ -238,6 +241,16 @@ func main() {
 		log.Printf("pinoy:main: config load error: %v", err)
 	} else {
 		log.Printf("pinoy:main: cfg: %v", *cfg)
+		PCfg = cfg
+	}
+
+	// initialize DB
+	db, err := NewDatabase(PCfg)
+	if err != nil {
+		log.Printf("pinoy:main: db init error: %v", err)
+	} else {
+		log.Printf("pinoy:main: db init success")
+		PDb = db
 	}
 
 	// setup session options

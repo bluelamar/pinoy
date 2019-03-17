@@ -1,0 +1,7 @@
+FROM apache/couchdb:latest
+
+COPY cdb-local.ini /opt/couchdb/etc/local.d
+
+EXPOSE 5984
+
+ENV NAME wsruler-cdb-1

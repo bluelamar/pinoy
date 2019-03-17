@@ -7,8 +7,11 @@ import (
 )
 
 type PinoyConfig struct {
-	Name  string
-	Order int64
+	DbUrl  string
+	DbName string
+	DbPort int
+	DbUser string
+	DbPwd  string
 }
 
 func LoadConfig(fpath string) (*PinoyConfig, error) {

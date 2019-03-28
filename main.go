@@ -87,8 +87,20 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		password := r.Form["user_password"]
 		// logic part of log in
 		fmt.Println("username:", username)
-		fmt.Println("password:", password)
+		fmt.Println("password:", password) // FIX
 		// verify user in db and set cookie et al
+		entity := "staff/" + username[0]
+		umap, err := PDb.read(entity)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// get the role from the map
+		role, ok := (*umap)["role"]
+		if !ok {
+			role = "Bypasser"
+		}
 
 		session, err := store.Get(r, CookieNameSID)
 		if err != nil {
@@ -97,7 +109,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		}
 		session.Values["authenticated"] = true
 		session.Values["user"] = username[0]
-		session.Values["role"] = "Manager" // "manager" "desk" "staff"
+		session.Values["role"] = role // "Manager" "desk" "staff"
 		session.Save(r, w)
 
 		fmt.Printf("signin: post about to redirect to frontpage: auth=%t\n", session.Values["authenticated"].(bool))

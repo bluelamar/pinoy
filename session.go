@@ -1,5 +1,5 @@
 // session
-package main
+package pinoy
 
 import (
 	"fmt"

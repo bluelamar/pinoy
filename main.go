@@ -1,4 +1,4 @@
-package main
+package pinoy
 
 import (
 	"fmt"
@@ -90,7 +90,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("password:", password) // FIX
 		// verify user in db and set cookie et al
 		entity := "staff/" + username[0]
-		umap, err := PDb.read(entity)
+		umap, err := PDb.Read(entity)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return

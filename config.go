@@ -1,4 +1,4 @@
-package main
+package pinoy
 
 import (
 	"encoding/json"

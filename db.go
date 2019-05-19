@@ -1,4 +1,4 @@
-package main
+package pinoy
 
 import (
 	"bytes"
@@ -88,7 +88,7 @@ func NewDatabase(cfg *PinoyConfig) (*DBInterface, error) {
 	return &dbint, nil
 }
 
-func (dbi *DBInterface) create(entity string, val interface{}) (*map[string]interface{}, error) {
+func (dbi *DBInterface) Create(entity string, val interface{}) (*map[string]interface{}, error) {
 	// create: POST -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/link/${ENTITY} -d "${DATA}"
 	url := dbi.baseUrl + entity
 	bytesRepresentation, err := json.Marshal(val)
@@ -112,7 +112,7 @@ func (dbi *DBInterface) create(entity string, val interface{}) (*map[string]inte
 	return &result, nil
 }
 
-func (dbi *DBInterface) read(entity string) (*map[string]interface{}, error) {
+func (dbi *DBInterface) Read(entity string) (*map[string]interface{}, error) {
 	// read: -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/link/${ENTITY}/${DBLINK2}
 	url := dbi.baseUrl + entity
 	request, err := http.NewRequest("GET", url, nil)
@@ -132,9 +132,11 @@ func (dbi *DBInterface) read(entity string) (*map[string]interface{}, error) {
 	return &result, nil
 }
 
-func (dbi *DBInterface) update(entity string, val interface{}) error {
+func (dbi *DBInterface) Update(entity, id, rev string, val map[string]interface{}) error {
 	// update: PUT -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/${ENTITY}/${ENV1} -d "${DATA}
 	url := dbi.baseUrl + entity
+	val["_id"] = id
+	val["_rev"] = rev
 	bytesRepresentation, err := json.Marshal(val)
 	if err != nil {
 		return err
@@ -156,13 +158,13 @@ func (dbi *DBInterface) update(entity string, val interface{}) error {
 	return err
 }
 
-func (dbi *DBInterface) delete(key, entity string) error {
+func (dbi *DBInterface) Delete(key, entity string) error {
 	// TODO delete: DELETE -H "Accept: application/json" http://localhost:8080/v1/${ENTITY}/${ID}
 	// curl -H "Content-Type: application/json" http://localhost:5984/dirsvc_links/hawaii?rev="1-4b0b6f6ea78ae4b11632f2640d3a89cb" -X DELETE
 	return nil
 }
 
-func (dbi *DBInterface) find() ([]interface{}, error) {
+func (dbi *DBInterface) Find() ([]interface{}, error) {
 	// TODO find
 	/* FIX
 	String selector = "{\"selector\":{\"" + field  + "\":{\"$eq\":\"" + value + "\"}}}";

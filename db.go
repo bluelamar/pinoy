@@ -38,6 +38,7 @@ func NewDatabase(cfg *PinoyConfig) (*DBInterface, error) {
 	//`{"title":"Buy cheese and bread for breakfast."}`)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payLoad))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	//req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
 	timeout := time.Duration(time.Duration(cfg.Timeout) * time.Second)
@@ -95,15 +96,19 @@ func (dbi *DBInterface) Create(entity string, val interface{}) (*map[string]inte
 	if err != nil {
 		return nil, err
 	}
-	request, err := http.NewRequest("POST", url, bytes.NewBuffer(bytesRepresentation))
+	log.Println("FIX create:body=", bytesRepresentation)
+	request, err := http.NewRequest("POST", url, bytes.NewReader(bytesRepresentation))
 	if err != nil {
 		return nil, err
 	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
 
 	resp, err := dbi.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
+	//defer resp.Body.Close()
 
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
@@ -112,13 +117,15 @@ func (dbi *DBInterface) Create(entity string, val interface{}) (*map[string]inte
 	return &result, nil
 }
 
-func (dbi *DBInterface) Read(entity string) (*map[string]interface{}, error) {
-	// read: -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/link/${ENTITY}/${DBLINK2}
-	url := dbi.baseUrl + entity
+func (dbi *DBInterface) Read(entity, id string) (*map[string]interface{}, error) {
+	// curl -v --cookie "cdbcookies" http://localhost:5984/dblnk/19b74cd4
+	url := dbi.baseUrl + entity + "/" + id
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
 
 	resp, err := dbi.client.Do(request)
 	if err != nil {
@@ -131,6 +138,9 @@ func (dbi *DBInterface) Read(entity string) (*map[string]interface{}, error) {
 
 	return &result, nil
 }
+
+// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/_all_docs
+// Readall
 
 func (dbi *DBInterface) Update(entity, id, rev string, val map[string]interface{}) error {
 	// update: PUT -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/${ENTITY}/${ENV1} -d "${DATA}
@@ -159,8 +169,8 @@ func (dbi *DBInterface) Update(entity, id, rev string, val map[string]interface{
 }
 
 func (dbi *DBInterface) Delete(key, entity string) error {
-	// TODO delete: DELETE -H "Accept: application/json" http://localhost:8080/v1/${ENTITY}/${ID}
-	// curl -H "Content-Type: application/json" http://localhost:5984/dirsvc_links/hawaii?rev="1-4b0b6f6ea78ae4b11632f2640d3a89cb" -X DELETE
+	// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/f00dc0ba83aec8f560bd7c8036000c0a?rev=1-e1e73b2d88ada8d8f636cb13f2c06b71 -X DELETE
+
 	return nil
 }
 

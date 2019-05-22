@@ -143,9 +143,9 @@ func (dbi *DBInterface) Read(entity, id string) (*map[string]interface{}, error)
 // Readall
 
 func (dbi *DBInterface) Update(entity, id, rev string, val map[string]interface{}) error {
-	// update: PUT -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/${ENTITY}/${ENV1} -d "${DATA}
-	url := dbi.baseUrl + entity
-	val["_id"] = id
+	// curl --cookie "cdbcookies" -H "Content-Type: application/json" http://localhost:5984/stuff/592ccd646f8202691a77f1b1c5004496 -X PUT -d '{"name":"sam","age":42,"_rev":"1-3f12b5828db45fda239607bf7785619a"}'
+	url := dbi.baseUrl + entity + "/" + id
+	//val["_id"] = id
 	val["_rev"] = rev
 	bytesRepresentation, err := json.Marshal(val)
 	if err != nil {
@@ -168,10 +168,27 @@ func (dbi *DBInterface) Update(entity, id, rev string, val map[string]interface{
 	return err
 }
 
-func (dbi *DBInterface) Delete(key, entity string) error {
+func (dbi *DBInterface) Delete(entity, id, rev string) error {
 	// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/f00dc0ba83aec8f560bd7c8036000c0a?rev=1-e1e73b2d88ada8d8f636cb13f2c06b71 -X DELETE
 
-	return nil
+	url := dbi.baseUrl + entity + "/" + id + "?rev=" + rev
+	request, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
+
+	resp, err := dbi.client.Do(request)
+	if err != nil {
+		return err
+	}
+
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	log.Println("FIX delete: ", result)
+	// FIX TODO get the status from the result
+	return err
 }
 
 func (dbi *DBInterface) Find() ([]interface{}, error) {

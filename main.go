@@ -89,8 +89,9 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("username:", username)
 		fmt.Println("password:", password) // FIX
 		// verify user in db and set cookie et al
-		entity := "staff/" + username[0]
-		umap, err := PDb.Read(entity)
+		//entity := "staff/" + username[0]
+		entity := "staff"
+		umap, err := PDb.Read(entity, username[0])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return

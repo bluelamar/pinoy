@@ -68,6 +68,12 @@ func TestCreate(t *testing.T) {
 	}
 	t.Logf("read entity=%s id=%s val=%v\n", entity, id, ent_map)
 
+	resArray, err := dbInt.ReadAll(entity)
+	if err != nil {
+		t.Error(`db readall error`, err)
+	}
+	t.Logf("readall entity=%s val=%v\n", entity, resArray)
+
 	err = dbInt.Delete(entity, id, rev)
 	if err != nil {
 		t.Error(`db delete error`, err)
@@ -96,9 +102,21 @@ func TestCreate(t *testing.T) {
 	if err != nil {
 		t.Error(`db read error`, err)
 	}
-	t.Logf("read entity=%s id=%s val=%v\n", entity, id, ent_map)
+	t.Logf("read entity=%s id=%s v-type=%T val=%v\n", entity, id, ent_map, ent_map)
 
-	// TODO test Update
+	var updEntity map[string]interface{}
+	updEntity = *ent_map // .(*map[string]interface{})
+	updEntity["shape"] = "pyramid"
+	err = dbInt.Update(entity, id, rev, updEntity)
+	if err != nil {
+		t.Error(`db update error`, err)
+	}
+
+	ent_map, err = dbInt.Read(entity, id)
+	if err != nil {
+		t.Error(`db read error`, err)
+	}
+	t.Logf("read entity=%s id=%s val=%v\n", entity, id, ent_map)
 
 	err = dbInt.Delete(entity, id, rev)
 	if err != nil {

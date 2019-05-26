@@ -140,9 +140,10 @@ func (dbi *DBInterface) Read(entity, id string) (*map[string]interface{}, error)
 }
 
 //func (dbi *DBInterface) ReadAll(entity string) (*map[string]interface{}, error) {
-func (dbi *DBInterface) ReadAll(entity string) ([]string, error) {
+//func (dbi *DBInterface) ReadAll(entity string) ([]string, error) {
+func (dbi *DBInterface) ReadAll(entity string) ([]interface{}, error) {
 	// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/_all_docs
-	url := dbi.baseUrl + entity + "/_all_docs"
+	url := dbi.baseUrl + entity + "/_all_docs?include_docs=true"
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -167,18 +168,24 @@ func (dbi *DBInterface) ReadAll(entity string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	//log.Println("FIX readall: ", result)
+	log.Println("FIX readall result: ", result)
 	var rows []interface{}
 	rows = result["rows"].([]interface{})
-	ids := make([]string, len(rows))
+	log.Println("FIX readall rows: ", rows)
+	//return rows, nil
+
+	//ids := make([]string, len(rows))
+	docs := make([]interface{}, len(rows))
 	for k, v := range rows {
 		vmap := v.(map[string]interface{})
-		ids[k] = vmap["id"].(string)
+		docs[k] = vmap["doc"]
+		//ids[k] = vmap["id"].(string)
 	}
+	return docs, nil
 	//log.Println("FIX readall rows: ", result["rows"])
 	//log.Println("FIX readall ids: ", ids)
 
-	return ids, nil
+	//return ids, nil
 	//return &result, nil
 }
 

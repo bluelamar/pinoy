@@ -39,6 +39,7 @@ func staff(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
 		sessDetails := get_sess_details(r, "Staff", "Staff page to Pinoy Lodge")
+		/* FIX
 		a1 := Employee{
 			Last:   "Fuentes",
 			First:  "Mario",
@@ -50,11 +51,34 @@ func staff(w http.ResponseWriter, r *http.Request) {
 			First:  "Jay",
 			Middle: "R",
 			Salary: "$2.75",
+		} */
+
+		resArray, err := PDb.ReadAll("staff")
+		if err != nil {
+			log.Println(`staff: db readall error`, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		emps := make([]Employee, 2)
-		emps[0] = a1
-		emps[1] = a2
+		emps := make([]Employee, len(resArray))
+
+		for k, v := range resArray {
+			vm := v.(map[string]interface{})
+			doc, exists := vm["doc"]
+			if !exists {
+				continue
+			}
+			docm := doc.(map[string]interface{})
+			emps[k] = Employee{
+				Last:   docm["Last"].(string),
+				First:  docm["First"].(string),
+				Middle: docm["Middle"].(string),
+				Salary: docm["Salary"].(string),
+			}
+		}
+
+		//emps := make([]Employee, 2)
+		//emps[0] = a1
+		//emps[1] = a2
 
 		tblData := EmpTable{
 			sessDetails,
@@ -118,21 +142,82 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 		if update == "delete" {
 			delete_emp = true
 		}
+		/* FIX
+		update_emp := false
+		if update == "true" {
+			update_emp = true
+		} */
 
 		fmt.Printf("upd_staff: last=%s first=%s middle=%s salary=%s update=%s\n", lname, fname, mname, salary, update)
-
-		if delete_emp {
-			// TODO delete specified room - error if name is not set
-			if lname == "" {
-				http.Error(w, "Name not specified", http.StatusBadRequest)
-			}
-			fmt.Printf("upd_staff: delete employee=%s, %s %s\n", lname, fname, mname)
-			http.Redirect(w, r, "/manager/staff", http.StatusFound)
+		if lname == "" {
+			http.Error(w, "Last name not specified", http.StatusBadRequest)
+			return
+		}
+		elist, err := PDb.Find("staff", "Last", lname)
+		if err != nil {
+			log.Println("upd_staff: No staff with last name=", lname)
+			http.Error(w, "No such employee", http.StatusBadRequest)
 		}
 
-		// TODO get the room details from the db
+		id := ""
+		rev := ""
+		for _, v := range elist {
+			// if more than one object ensure matched all parts of the name
+			vm := v.(map[string]interface{})
+			name, exists := vm["First"]
+			if !exists {
+				continue
+			}
+			if strings.Compare(fname, name.(string)) != 0 {
+				continue
+			}
+			name, exists = vm["Middle"]
+			if !exists {
+				continue
+			}
+			if strings.Compare(mname, name.(string)) != 0 {
+				continue
+			}
 
-		// user wants to add or update existing room
+			name, exists = vm["_id"]
+			if !exists {
+				break
+			}
+			id = name.(string)
+
+			name, exists = vm["_rev"]
+			if !exists {
+				break
+			}
+			rev = name.(string)
+		}
+		if id == "" || rev == "" {
+			http.Error(w, "Failed to process user: "+lname, http.StatusBadRequest)
+			return
+		}
+
+		if delete_emp {
+			// delete specified room
+			fmt.Printf("upd_staff: delete employee=%s, %s %s\n", lname, fname, mname)
+
+			err = PDb.Delete("staff", id, rev)
+			if err != nil {
+				http.Error(w, "Failed to delete user: "+lname, http.StatusInternalServerError)
+			} else {
+				http.Redirect(w, r, "/manager/staff", http.StatusFound)
+			}
+			return
+		} /* FIX else if update_emp {
+			val := Employee{
+				lname,
+				fname,
+				mname,
+				salary,
+			}
+			_, err := PDb.Update("staff", id, rev, val)
+		} */
+
+		// user wants to update existing employee
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/staff.gtpl", "static/header.gtpl")
 		if err != nil {
 			fmt.Printf("upd_staff:err: %s", err.Error())
@@ -163,13 +248,23 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("val:", strings.Join(v, ""))
 		}
 
-		lname := r.Form["last"]
-		fname := r.Form["first"]
-		mname := r.Form["middle"]
-		salary := r.Form["salary"]
+		lname := r.Form["last"][0]
+		fname := r.Form["first"][0]
+		mname := r.Form["middle"][0]
+		salary := r.Form["salary"][0]
 
-		// TODO set in db
-		fmt.Printf("upd_staff: last=%s first=%s middle=%s salary=%s\n", lname, fname, mname, salary)
+		// set in db
+		fmt.Printf("upd_staff:FIX: last=%s first=%s middle=%s salary=%s\n", lname, fname, mname, salary)
+		staffVal := Employee{
+			Last:   lname,
+			First:  fname,
+			Middle: mname,
+			Salary: salary,
+		}
+		_, err := PDb.Create("staff", staffVal)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 
 		fmt.Printf("upd_staff: post about to redirect to staff\n")
 		http.Redirect(w, r, "/manager/staff", http.StatusFound)

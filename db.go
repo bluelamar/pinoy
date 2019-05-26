@@ -141,7 +141,7 @@ func (dbi *DBInterface) Read(entity, id string) (*map[string]interface{}, error)
 
 //func (dbi *DBInterface) ReadAll(entity string) (*map[string]interface{}, error) {
 func (dbi *DBInterface) ReadAll(entity string) ([]string, error) {
-// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/_all_docs
+	// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/_all_docs
 	url := dbi.baseUrl + entity + "/_all_docs"
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -161,7 +161,7 @@ func (dbi *DBInterface) ReadAll(entity string) ([]string, error) {
 	   ...
 
 	   Create slice of id's to return
-	 */
+	*/
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
@@ -182,30 +182,36 @@ func (dbi *DBInterface) ReadAll(entity string) ([]string, error) {
 	//return &result, nil
 }
 
-func (dbi *DBInterface) Update(entity, id, rev string, val map[string]interface{}) error {
+// return the new revision
+func (dbi *DBInterface) Update(entity, id, rev string, val map[string]interface{}) (string, error) {
 	// curl --cookie "cdbcookies" -H "Content-Type: application/json" http://localhost:5984/stuff/592ccd646f8202691a77f1b1c5004496 -X PUT -d '{"name":"sam","age":42,"_rev":"1-3f12b5828db45fda239607bf7785619a"}'
 	url := dbi.baseUrl + entity + "/" + id
 	//val["_id"] = id
 	val["_rev"] = rev
 	bytesRepresentation, err := json.Marshal(val)
 	if err != nil {
-		return err
+		return "", err
 	}
 	request, err := http.NewRequest("PUT", url, bytes.NewBuffer(bytesRepresentation))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	resp, err := dbi.client.Do(request)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return "", err
+	}
+	// ex: map[ok:true id:3d_shapes rev:28-d2bc68f0f0132cbb483ee1196e3c482e]
 	log.Println("FIX put: ", result)
 	// FIX TODO get the status from the result
-	return err
+	rev = result["rev"].(string)
+	return rev, err
 }
 
 func (dbi *DBInterface) Delete(entity, id, rev string) error {
@@ -231,8 +237,10 @@ func (dbi *DBInterface) Delete(entity, id, rev string) error {
 	return err
 }
 
-func (dbi *DBInterface) Find() ([]interface{}, error) {
+func (dbi *DBInterface) Find(entity, field, value string) ([]interface{}, error) {
 	// TODO find
+	// curl -v -H "Content-Type: application/json" --cookie "cdbcookies" http://localhost:5984/testxyz/_find -X POST -d $SEL
+	// SEL='{"selector":{"shape":{"$eq":"pyramid"}}}'
 	/* FIX
 	String selector = "{\"selector\":{\"" + field  + "\":{\"$eq\":\"" + value + "\"}}}";
 
@@ -241,5 +249,13 @@ func (dbi *DBInterface) Find() ([]interface{}, error) {
 			Object retObj = entity.get("docs");
 			return (List<Object>)retObj;
 		} */
-	return nil, nil
+	entity = entity + "/_find"
+	val := `{"selector":{"` + field + `":{"$eq":"` + value + `"}}}`
+	var ret *map[string]interface{}
+	var err error
+	ret, err = dbi.Create(entity, val)
+	if err != nil {
+		return nil, err
+	}
+	return (*ret)["docs"].([]interface{}), nil
 }

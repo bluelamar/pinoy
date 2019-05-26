@@ -4,7 +4,6 @@ import (
 
 	//"fmt"
 	"testing"
-
 )
 
 var dbInt *DBInterface
@@ -15,14 +14,13 @@ func TestNewDB(t *testing.T) {
 	//defer server.Delete(newDB)
 	//dbNew, err := NewDatabase(fmt.Sprintf("%s/%s", DefaultBaseURL, newDB))
 
-
 	cfg := PinoyConfig{
-		DbUrl   : "http://localhost",
-		DbName  : "testxyz",
-		DbPort  : 5984,
-		DbUser  : "ruler",
-		DbPwd   : "oneringtorule",
-		Timeout : 5,
+		DbUrl:   "http://localhost",
+		DbName:  "testxyz",
+		DbPort:  5984,
+		DbUser:  "ruler",
+		DbPwd:   "oneringtorule",
+		Timeout: 5,
 	}
 
 	pwd, err := cfg.EncryptDbPwd()
@@ -79,24 +77,35 @@ func TestCreate(t *testing.T) {
 		t.Error(`db delete error`, err)
 	}
 
-	doc = map[string]interface{}{"_id":"3d_shapes","shape":"box"}
+	ent_map, err = dbInt.Read(entity, "3d_shapes")
+	if err != nil {
+		t.Logf("db read error: %v\n", err)
+	} else {
+		t.Logf("db read 3d_shaps: %v\n", ent_map)
+		rev3, found := (*ent_map)["_rev"].(string)
+		if found {
+			dbInt.Delete(entity, "3d_shapes", rev3)
+		}
+	}
+	doc = map[string]interface{}{"_id": "3d_shapes", "shape": "box"}
 	doc2, err = dbInt.Create("testxyz", doc)
 	if err != nil {
 		t.Error(`db save error`, err)
 	}
+	t.Logf("create doc id=3d_shapes with shape=box: %v\n", doc2)
 	id = ""
 	if id2, ok := (*doc2)["id"]; ok {
 		id = id2.(string)
-		t.Logf("TestCreate got id: %q\n", id)
+		t.Logf("TestCreate-2: got id: %q\n", id)
 	} else {
-		t.Errorf("TestCreate: missing id")
+		t.Errorf("TestCreate-2: missing id")
 	}
 	rev = ""
 	if rv, ok := (*doc2)["rev"]; ok {
 		rev = rv.(string)
-		t.Logf("TestCreate got rev: %q\n", rev)
+		t.Logf("TestCreate-2: got rev: %q\n", rev)
 	} else {
-		t.Errorf("TestCreate: missing rev")
+		t.Errorf("TestCreate-2: missing rev")
 	}
 	ent_map, err = dbInt.Read(entity, id)
 	if err != nil {
@@ -107,10 +116,11 @@ func TestCreate(t *testing.T) {
 	var updEntity map[string]interface{}
 	updEntity = *ent_map // .(*map[string]interface{})
 	updEntity["shape"] = "pyramid"
-	err = dbInt.Update(entity, id, rev, updEntity)
+	rev, err = dbInt.Update(entity, id, rev, updEntity)
 	if err != nil {
 		t.Error(`db update error`, err)
 	}
+	t.Logf("update entity=%s id=%s new-rev=%s\n", entity, id, rev)
 
 	ent_map, err = dbInt.Read(entity, id)
 	if err != nil {
@@ -123,5 +133,3 @@ func TestCreate(t *testing.T) {
 		t.Error(`db delete error`, err)
 	}
 }
-
-

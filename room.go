@@ -1,4 +1,4 @@
-package pinoy
+package main
 
 import (
 	"fmt"

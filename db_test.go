@@ -1,4 +1,4 @@
-package pinoy
+package main
 
 import (
 
@@ -7,6 +7,7 @@ import (
 )
 
 var dbInt *DBInterface
+var cfg *PinoyConfig
 
 func TestNewDB(t *testing.T) {
 	//newDB := "golang-newdb"
@@ -14,7 +15,7 @@ func TestNewDB(t *testing.T) {
 	//defer server.Delete(newDB)
 	//dbNew, err := NewDatabase(fmt.Sprintf("%s/%s", DefaultBaseURL, newDB))
 
-	cfg := PinoyConfig{
+	cfg = &PinoyConfig{
 		DbUrl:   "http://localhost",
 		DbName:  "testxyz",
 		DbPort:  5984,
@@ -30,7 +31,7 @@ func TestNewDB(t *testing.T) {
 		t.Logf("TestNewDb got pwd: %q\n", pwd)
 	}
 
-	dbInt1, err := NewDatabase(&cfg)
+	dbInt1, err := NewDatabase(cfg)
 	if err != nil {
 		t.Error(`TestNewDb: database error`, err)
 	}
@@ -39,7 +40,7 @@ func TestNewDB(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	doc := map[string]interface{}{"doc": "bar"}
-	doc2, err := dbInt.Create("testxyz", doc)
+	doc2, err := dbInt.Create("testxyz", "docbar", doc)
 	if err != nil {
 		t.Error(`db save error`, err)
 	}
@@ -66,6 +67,17 @@ func TestCreate(t *testing.T) {
 	}
 	t.Logf("read entity=%s id=%s val=%v\n", entity, id, ent_map)
 
+	ent_map, err = dbInt.Read(entity, "nosuchid")
+	if err != nil {
+		t.Error(`db read nosuchid error`, err)
+	} else {
+		t.Logf("read entity=%s id=nosuchid val=%v\n", entity, ent_map)
+		errMsg, exists := (*ent_map)["error"]
+		if exists {
+			t.Logf("read entity=%s id=nosuchid got error=%v\n", entity, errMsg)
+		}
+	}
+
 	resArray, err := dbInt.ReadAll(entity)
 	if err != nil {
 		t.Error(`db readall error`, err)
@@ -87,8 +99,9 @@ func TestCreate(t *testing.T) {
 			dbInt.Delete(entity, "3d_shapes", rev3)
 		}
 	}
-	doc = map[string]interface{}{"_id": "3d_shapes", "shape": "box"}
-	doc2, err = dbInt.Create("testxyz", doc)
+	//doc = map[string]interface{}{"_id": "3d_shapes", "shape": "box"}
+	doc = map[string]interface{}{"shape": "box"}
+	doc2, err = dbInt.Create("testxyz", "3d_shapes", doc)
 	if err != nil {
 		t.Error(`db save error`, err)
 	}
@@ -132,4 +145,10 @@ func TestCreate(t *testing.T) {
 	if err != nil {
 		t.Error(`db delete error`, err)
 	}
+}
+
+func TestEncrypt(t *testing.T) {
+
+	hashed := HashIt("xyz")
+	t.Logf("test-encrypt: xyz=%s\n", hashed)
 }

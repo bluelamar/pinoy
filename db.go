@@ -1,4 +1,4 @@
-package pinoy
+package main
 
 import (
 	"bytes"
@@ -89,10 +89,15 @@ func NewDatabase(cfg *PinoyConfig) (*DBInterface, error) {
 	return &dbint, nil
 }
 
-func (dbi *DBInterface) Create(entity string, val interface{}) (*map[string]interface{}, error) {
+func (dbi *DBInterface) Create(entity, key string, val interface{}) (*map[string]interface{}, error) {
 	// create: POST -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/link/${ENTITY} -d "${DATA}"
 	url := dbi.baseUrl + entity
-	bytesRepresentation, err := json.Marshal(val)
+	var valMap map[string]interface{}
+	valMap = val.(map[string]interface{})
+	if key != "" {
+		valMap["_id"] = key
+	}
+	bytesRepresentation, err := json.Marshal(valMap)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +265,7 @@ func (dbi *DBInterface) Find(entity, field, value string) ([]interface{}, error)
 	val := `{"selector":{"` + field + `":{"$eq":"` + value + `"}}}`
 	var ret *map[string]interface{}
 	var err error
-	ret, err = dbi.Create(entity, val)
+	ret, err = dbi.Create(entity, "", val)
 	if err != nil {
 		return nil, err
 	}

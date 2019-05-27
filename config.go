@@ -1,9 +1,10 @@
-package pinoy
+package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 )
 
 type PinoyConfig struct {
@@ -18,6 +19,7 @@ type PinoyConfig struct {
 func LoadConfig(fpath string) (*PinoyConfig, error) {
 	content, err := ioutil.ReadFile(fpath)
 	if err != nil {
+		log.Println("Config: Failed to read config file:", err)
 		return nil, err
 	}
 
@@ -33,6 +35,7 @@ func LoadConfig(fpath string) (*PinoyConfig, error) {
 	err = json.Unmarshal(content, &cfg)
 	if err != nil {
 		fmt.Println("error:", err)
+		log.Println("Config: Failed to unmarshal config file:", err)
 	}
 	fmt.Printf("FIX:loadconfig: %+v", cfg)
 	return &cfg, nil

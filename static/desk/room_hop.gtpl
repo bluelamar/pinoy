@@ -16,7 +16,7 @@
     </tr>
     <tr>
     <td>Bell Hop PIN</td><td>
-    <input required placeholder="PIN" label="false" spellcheck="false" class="is-sensitive"  value="" name="bell_hop_pin" id="bell_hop_pin" />
+    <input required type="password" placeholder="PIN" label="false" spellcheck="false" class="is-sensitive"  value="" name="bell_hop_pin" id="bell_hop_pin" />
     </td>
     </tr>
     </table>

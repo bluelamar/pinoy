@@ -1,4 +1,4 @@
-package pinoy
+package main
 
 import (
 	"fmt"
@@ -87,7 +87,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		password := r.Form["user_password"]
 		// logic part of log in
 		fmt.Println("username:", username)
-		fmt.Println("password:", password) // FIX
+		fmt.Println("password:", password)
 		// verify user in db and set cookie et al
 		//entity := "staff/" + username[0]
 		entity := "staff"
@@ -97,8 +97,25 @@ func signin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		log.Println("signin:FIX read user=", username[0], " entry=", umap)
+
+		passwd, ok := (*umap)["Pwd"]
+		if !ok {
+			http.Error(w, "Not authorized", http.StatusInternalServerError)
+			return
+		}
+		// use hash only for user password
+		pwd := HashIt(password[0])
+
+		//pwd := Decrypt(PCfg.DbPwd, password[0])
+		log.Println("signin:FIX db.pwd=", passwd, " form.pwd=", password[0], " hash=", pwd)
+		if passwd != pwd {
+			http.Error(w, "Not authorized", http.StatusUnauthorized)
+			return
+		}
+
 		// get the role from the map
-		role, ok := (*umap)["role"]
+		role, ok := (*umap)["Role"]
 		if !ok {
 			role = "Bypasser"
 		}
@@ -246,7 +263,7 @@ func room_hop(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	/* FIX TODO setup templates first
+	/* FIX TODO   setup templates first
 	 */
 
 	cfg, err := LoadConfig("/etc/pinoy/config.json")
@@ -261,6 +278,7 @@ func main() {
 	db, err := NewDatabase(PCfg)
 	if err != nil {
 		log.Printf("pinoy:main: db init error: %v", err)
+		log.Fatal("Failed to create db: ", err)
 	} else {
 		log.Printf("pinoy:main: db init success")
 		PDb = db
@@ -288,6 +306,7 @@ func main() {
 	http.HandleFunc("/manager/upd_food", upd_food)
 	http.HandleFunc("/manager/staff", staff)
 	http.HandleFunc("/manager/upd_staff", upd_staff)
+	http.HandleFunc("/manager/add_staff", add_staff)
 	http.HandleFunc("/manager/upd_room", upd_room)
 	http.HandleFunc("/manager/room_rates", room_rates)
 	http.HandleFunc("/manager/upd_room_rate", upd_room_rate)

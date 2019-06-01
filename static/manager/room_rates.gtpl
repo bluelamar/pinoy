@@ -7,20 +7,22 @@
 <p><h2>{{.Sess.Role}} Page</h2></p>
 
 {{if eq .Sess.Role "Manager"}}
-<p><a id="update_room_rates" class="button" href="/manager/upd_room_rate">Add Room Rate</a></p>
+<p><a id="update_room_rates" class="button" href="/manager/upd_room_rate?update=add">Add Room Rate</a></p>
 
 <p>Rate Classes</p>
 <table>
-<tr>
-<th>Rate Class</th><th>3 Hour</th><th>6 hour</th><th>Extra Hour</th>
-<th>Update Rate</th><th>Delete Rate</th>
-</tr>
 {{range .RateData}}
+
 <tr>
-<td>{{.Class}}</td><td>{{.Hour3}}</td><td>{{.Hour6}}</td><td>{{.Extra}}</td>
-<td><a id="upd_rate" class="button" href="/manager/upd_room_rate?rate_class={{.Class}}&hour3={{.Hour3}}&hour6={{.Hour6}}&extra={{.Extra}}&update=true">Update Rate Class</a></td>
-<td><a id="del_rate" class="button" href="/manager/upd_room_rate?rate_class={{.Class}}&hour3={{.Hour3}}&hour6={{.Hour6}}&extra={{.Extra}}&update=delete">Delete Rate Class</a></td>
+<td>{{.RateClass}}</td>
+{{range .Rates}}
+  <td>{{.TUnit}} : {{.Cost}}</td>
+{{end}}
+
+<td><a id="upd_rate" class="button" href="/manager/upd_room_rate?rate_class={{.RateClass}}&update=true">Update Rate</a></td>
+<td><a id="del_rate" class="button" href="/manager/upd_room_rate?rate_class={{.RateClass}}&update=delete">Delete Rate</a></td>
 </tr>
+
 {{else}}
 No food items to report
 {{end}}

@@ -107,7 +107,6 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		// use hash only for user password
 		pwd := HashIt(password[0])
 
-		//pwd := Decrypt(PCfg.DbPwd, password[0])
 		log.Println("signin:FIX db.pwd=", passwd, " form.pwd=", password[0], " hash=", pwd)
 		if passwd != pwd {
 			http.Error(w, "Not authorized", http.StatusUnauthorized)
@@ -254,7 +253,7 @@ func room_hop(w http.ResponseWriter, r *http.Request) {
 		bell_hop_pin := r.Form["bell_hop_pin"]
 		room_num := r.Form["room_num"]
 
-		// TODO set in db
+		// TODO set in db - date + timestamp + bell_hop_pin + room_num
 		fmt.Printf("room_hop: bell-hop-pin=%s room-num=%s\n", bell_hop_pin, room_num)
 
 		fmt.Printf("room_hop: post about to redirect to room_status\n")

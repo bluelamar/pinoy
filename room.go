@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+const (
+	RoomRatesEntity = "room_rates"
+)
+
 type RoomState struct {
 	Num         int
 	Status      string
@@ -33,11 +37,17 @@ type UpdateRoom struct {
 	RoomDetails
 }
 
+type RoomRate struct {
+	TUnit string // time unit, ex: "3 Hours"
+	Cost  string // cost of the TUnit, ex: "$10"
+}
 type RoomRateData struct {
-	Class string
+	RateClass string // ex: "Small Room"
+	Rates     []RoomRate
+	/* FIX
 	Hour3 string
 	Hour6 string
-	Extra string
+	Extra string */
 }
 
 type RateDataTable struct {
@@ -137,11 +147,12 @@ func room_rates(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
 		sessDetails := get_sess_details(r, "Room Rates", "Room Rates page to Pinoy Lodge")
+		/* FIX
 		a1 := RoomRateData{
-			Class: "C",
-			Hour3: "$10.00",
-			Hour6: "$18.00",
-			Extra: "$3.00",
+			RateClass: "C",
+			Hour3:     "$10.00",
+			Hour6:     "$18.00",
+			Extra:     "$3.00",
 		}
 		a2 := RoomRateData{
 			Class: "B",
@@ -153,10 +164,37 @@ func room_rates(w http.ResponseWriter, r *http.Request) {
 		rrd := make([]RoomRateData, 2)
 		rrd[0] = a1
 		rrd[1] = a2
+		*/
+		// []interface{}, error
+		rrs, err := PDb.ReadAll(RoomRatesEntity)
+		if err != nil {
+			log.Println("room_rates: Failed to read room rates: err=", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		rrds := make([]RoomRateData, len(rrs))
+		for k, v := range rrs {
+			log.Println("FIX got k=", k, " v=", v)
+			val := v.(map[string]interface{})
+			rs := val["Rates"].([]interface{})
+			rates := make([]RoomRate, len(rs))
+			for k2, v2 := range rs {
+				val2 := v2.(map[string]interface{})
+				rr := RoomRate{
+					val2["TUnit"].(string),
+					val2["Cost"].(string),
+				}
+				rates[k2] = rr
+			}
+			rrd := RoomRateData{
+				val["RateClass"].(string),
+				rates,
+			}
+			rrds[k] = rrd
+		}
 
 		tblData := RateDataTable{
 			sessDetails,
-			rrd,
+			rrds,
 		}
 		err = t.Execute(w, &tblData)
 		if err != nil {
@@ -177,7 +215,7 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 		} else {
 			rate_class = rate_classes[0]
 		}
-
+		/* FIX
 		hour3 := ""
 		hour3s, ok := r.URL.Query()["hour3"]
 		if !ok || len(hour3s[0]) < 1 {
@@ -201,7 +239,7 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 		} else {
 			extra = extras[0]
 		}
-
+		*/
 		update := ""
 		updates, ok := r.URL.Query()["update"]
 		if !ok || len(updates[0]) < 1 {
@@ -210,36 +248,76 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 			update = updates[0]
 		}
 
-		delete_rate := false
+		deleteRate := false
 		if update == "delete" {
-			delete_rate = true
+			deleteRate = true
 		}
 
-		fmt.Printf("upd_room_rate: rate-class=%s update=%s hour3=%s hour6=%s extra=%s\n", rate_class, update, hour3, hour6, extra)
+		fmt.Printf("upd_room_rate: rate-class=%s update=%s\n", rate_class, update)
+		var rateMap *map[string]interface{}
+		if len(rate_class) > 1 {
+			var err error
+			rateMap, err = PDb.Read(RoomRatesEntity, rate_class)
+			if err != nil {
+				http.Error(w, "Invalid Rate class specified", http.StatusBadRequest)
+				return
+			}
+		}
 
-		if delete_rate {
-			// TODO delete specified room - error if room is not set
+		if deleteRate {
+			// delete specified room rate - error if room rate is not set
 			if rate_class == "" {
 				http.Error(w, "Rate class not specified", http.StatusBadRequest)
+				return
 			}
 			fmt.Printf("upd_room_rate: delete room-rate=%s\n", rate_class)
-			http.Redirect(w, r, "/manager/room_rates", http.StatusFound)
+
+			id := (*rateMap)["id"].(string)
+			rev := (*rateMap)["rev"].(string)
+			err := PDb.Delete(RoomRatesEntity, id, rev)
+			if err != nil {
+				http.Error(w, "Failed to delete room rate: "+rate_class, http.StatusConflict)
+			} else {
+				http.Redirect(w, r, "/manager/room_rates", http.StatusFound)
+			}
+			return
 		}
 
-		// TODO get the room details from the db
-
-		// user wants to add or update existing room
+		// user wants to add or update existing room rate
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/upd_room_rate.gtpl", "static/header.gtpl")
 		if err != nil {
 			fmt.Printf("upd_room_rate:err: %s", err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {
 			sessDetails := get_sess_details(r, "Update Room Rate", "Update Room Rate page of Pinoy Lodge")
+
+			var rrs []RoomRate
+			if rateMap != nil {
+				fmt.Printf("upd_room_rate: rate-map=%v\n", (*rateMap))
+				rrs2, ok := (*rateMap)["Rates"]
+				if !ok {
+					fmt.Printf("upd_room_rate: failed to get rates\n")
+					http.Error(w, "No rates", http.StatusInternalServerError)
+					return
+				}
+				rrs3 := rrs2.([]interface{})
+				fmt.Printf("upd_room_rate: rates=%v\n", rrs2)
+				rrs = make([]RoomRate, len(rrs3))
+				for k, v := range rrs3 {
+					fmt.Printf("upd_room_rate: k=%d v=%v\n", k, v)
+
+					v2 := v.(map[string]interface{})
+					rrs[k] = RoomRate{
+						TUnit: v2["TUnit"].(string),
+						Cost:  v2["Cost"].(string),
+					}
+				}
+			} else {
+				rrs = nil
+			}
 			roomData := RoomRateData{
 				rate_class,
-				hour3,
-				hour6,
-				extra,
+				rrs,
 			}
 			updData := RateDataEntry{
 				sessDetails,
@@ -259,17 +337,73 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 		}
 
 		rate_class := r.Form["rate_class"]
-		hour3 := r.Form["hour3"]
-		hour6 := r.Form["hour6"]
-		extra := r.Form["extra"]
+		newTimeUnit := r.Form["new_rate_time_unit"]
+		newCost := r.Form["new_rate_cost"]
+		fmt.Printf("upd_room_rate: rate_class=%s time-unit=%s cost=%s\n", rate_class, newTimeUnit, newCost)
 
-		// TODO if no id create unique id
-		// verify all fields are set
+		// validate incoming form fields
+		if len(rate_class[0]) == 0 || len(newTimeUnit[0]) == 0 || len(newCost[0]) == 0 {
+			log.Println("upd_room_rate:POST: Missing form data")
+			http.Error(w, "Missing required fields", http.StatusBadRequest)
+			return
+		}
 
-		// TODO set in db
-		fmt.Printf("upd_room_rate: rate_class=%s hour3=%s hour6=%s extra=%s\n", rate_class, hour3, hour6, extra)
+		update := true
+		var rateMap *map[string]interface{}
+		var err error
+		rateMap, err = PDb.Read(RoomRatesEntity, rate_class[0])
+		if err != nil {
+			log.Println("upd_room_rate:POST: err=", err)
+			http.Error(w, "Invalid Rate class specified", http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("upd_room_rate:FIX: entry=", (*rateMap))
+		_, ok := (*rateMap)["error"]
+		if ok {
+			// no such entry so the rate-class must be new
+			rm := make(map[string]interface{})
+			rateMap = &rm
+			(*rateMap)["RateClass"] = rate_class[0]
+			(*rateMap)["Rates"] = make([]map[string]interface{}, 0)
+			update = false
+		}
 
-		fmt.Printf("upd_room_rate: post about to redirect to food\n")
+		rates := (*rateMap)["Rates"]
+		fmt.Printf("upd_room_rate: rate_class=%s rates=%v\n", rate_class, rates)
+		// if rates has TUnit entry matching newTimeUnit, remove it since it will be replaced
+		newRates := make([]map[string]interface{}, 0)
+		rts := rates.([]interface{})
+		for _, v := range rts {
+			v2 := v.(map[string]interface{})
+			tu := v2["TUnit"].(string)
+			if newTimeUnit[0] == tu {
+				continue
+			}
+			newRates = append(newRates, v2)
+		}
+
+		newRate := make(map[string]interface{})
+		newRate["TUnit"] = newTimeUnit[0]
+		newRate["Cost"] = newCost[0]
+
+		newRates = append(newRates, newRate)
+		(*rateMap)["Rates"] = newRates
+
+		// set in db
+		fmt.Printf("upd_room_rate:FIX rate_class=%s newrates=%v\n", rate_class, newRates)
+		if update {
+			_, err = PDb.Update(RoomRatesEntity, (*rateMap)["_id"].(string), (*rateMap)["_rev"].(string), (*rateMap))
+			fmt.Printf("upd_room_rate:FIX update rate_class=%s val=%v\n", rate_class, (*rateMap))
+		} else {
+			_, err = PDb.Create(RoomRatesEntity, rate_class[0], (*rateMap))
+		}
+		if err != nil {
+			log.Println("upd_room_rate:POST: Failed to create or updated rate=", rate_class, " :err=", err)
+			http.Error(w, "Failed to create or update rate="+rate_class[0], http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Printf("upd_room_rate: post about to redirect to room rates\n")
 		http.Redirect(w, r, "/manager/room_rates", http.StatusFound)
 	}
 }

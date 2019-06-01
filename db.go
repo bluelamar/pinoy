@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -116,7 +117,11 @@ func (dbi *DBInterface) Create(entity, key string, val interface{}) (*map[string
 	//defer resp.Body.Close()
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	err = checkResultError(&result, err)
+	if err != nil {
+		return nil, err
+	}
 	log.Println("FIX create: ", result)
 
 	return &result, nil
@@ -138,7 +143,11 @@ func (dbi *DBInterface) Read(entity, id string) (*map[string]interface{}, error)
 	}
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	err = checkResultError(&result, err)
+	if err != nil {
+		return nil, err
+	}
 	log.Println("FIX read: ", result)
 
 	return &result, nil
@@ -170,9 +179,11 @@ func (dbi *DBInterface) ReadAll(entity string) ([]interface{}, error) {
 	*/
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
+	err = checkResultError(&result, err)
 	if err != nil {
 		return nil, err
 	}
+
 	log.Println("FIX readall result: ", result)
 	var rows []interface{}
 	rows = result["rows"].([]interface{})
@@ -216,6 +227,7 @@ func (dbi *DBInterface) Update(entity, id, rev string, val map[string]interface{
 
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
+	err = checkResultError(&result, err)
 	if err != nil {
 		return "", err
 	}
@@ -243,10 +255,9 @@ func (dbi *DBInterface) Delete(entity, id, rev string) error {
 	}
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	err = json.NewDecoder(resp.Body).Decode(&result)
 	log.Println("FIX delete: ", result)
-	// FIX TODO get the status from the result
-	return err
+	return checkResultError(&result, err)
 }
 
 func (dbi *DBInterface) Find(entity, field, value string) ([]interface{}, error) {
@@ -266,8 +277,25 @@ func (dbi *DBInterface) Find(entity, field, value string) ([]interface{}, error)
 	var ret *map[string]interface{}
 	var err error
 	ret, err = dbi.Create(entity, "", val)
+	err = checkResultError(ret, err)
 	if err != nil {
 		return nil, err
 	}
 	return (*ret)["docs"].([]interface{}), nil
+}
+
+func checkResultError(result *map[string]interface{}, err error) error {
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		return nil
+	}
+	msg, ok := (*result)["error"]
+	if ok {
+		// CouchDb returned an error msg
+		log.Println("db:check: result contains error=", msg)
+		return errors.New(msg.(string))
+	}
+	return nil
 }

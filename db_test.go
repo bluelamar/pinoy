@@ -69,7 +69,7 @@ func TestCreate(t *testing.T) {
 
 	ent_map, err = dbInt.Read(entity, "nosuchid")
 	if err != nil {
-		t.Error(`db read nosuchid error`, err)
+		t.Logf(`db read nosuchid error=%v\n`, err)
 	} else {
 		t.Logf("read entity=%s id=nosuchid val=%v\n", entity, ent_map)
 		errMsg, exists := (*ent_map)["error"]
@@ -144,6 +144,13 @@ func TestCreate(t *testing.T) {
 	err = dbInt.Delete(entity, id, rev)
 	if err != nil {
 		t.Error(`db delete error`, err)
+	}
+	// try again - should get error
+	err = dbInt.Delete(entity, id, rev)
+	if err != nil {
+		t.Logf(`repeat db delete: get error=%v`, err)
+	} else {
+		t.Error(`repeated delete should have gotten error`)
 	}
 }
 

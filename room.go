@@ -272,8 +272,8 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Printf("upd_room_rate: delete room-rate=%s\n", rate_class)
 
-			id := (*rateMap)["id"].(string)
-			rev := (*rateMap)["rev"].(string)
+			id := (*rateMap)["_id"].(string)
+			rev := (*rateMap)["_rev"].(string)
 			err := PDb.Delete(RoomRatesEntity, id, rev)
 			if err != nil {
 				http.Error(w, "Failed to delete room rate: "+rate_class, http.StatusConflict)
@@ -354,17 +354,12 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 		rateMap, err = PDb.Read(RoomRatesEntity, rate_class[0])
 		if err != nil {
 			log.Println("upd_room_rate:POST: err=", err)
-			http.Error(w, "Invalid Rate class specified", http.StatusInternalServerError)
-			return
-		}
-		fmt.Println("upd_room_rate:FIX: entry=", (*rateMap))
-		_, ok := (*rateMap)["error"]
-		if ok {
+
 			// no such entry so the rate-class must be new
 			rm := make(map[string]interface{})
 			rateMap = &rm
 			(*rateMap)["RateClass"] = rate_class[0]
-			(*rateMap)["Rates"] = make([]map[string]interface{}, 0)
+			(*rateMap)["Rates"] = make([]interface{}, 0)
 			update = false
 		}
 
@@ -398,7 +393,7 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 			_, err = PDb.Create(RoomRatesEntity, rate_class[0], (*rateMap))
 		}
 		if err != nil {
-			log.Println("upd_room_rate:POST: Failed to create or updated rate=", rate_class, " :err=", err)
+			log.Println("upd_room_rate:POST: Failed to create or updated rate=", rate_class[0], " :err=", err)
 			http.Error(w, "Failed to create or update rate="+rate_class[0], http.StatusInternalServerError)
 			return
 		}

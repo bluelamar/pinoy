@@ -306,6 +306,7 @@ func main() {
 	http.HandleFunc("/manager/staff", staff)
 	http.HandleFunc("/manager/upd_staff", upd_staff)
 	http.HandleFunc("/manager/add_staff", add_staff)
+	http.HandleFunc("/manager/rooms", rooms)
 	http.HandleFunc("/manager/upd_room", upd_room)
 	http.HandleFunc("/manager/room_rates", room_rates)
 	http.HandleFunc("/manager/upd_room_rate", upd_room_rate)

@@ -12,8 +12,9 @@
       <li><a href="/desk/food">Food and Drink</a></li>
       {{if eq .Sess.Role "Manager"}}
       <p>Managerial Actions</p>
-      <li><a href="/manager/staff">Staff</a></li>
-      <li><a href="/manager/room_rates">Room Rates</a></li>
+      <li><a href="/manager/staff">Add or Update Staff</a></li>
+      <li><a href="/manager/room_rates">Add or Update Room Rates</a></li>
+      <li><a href="/manager/rooms">Add or Update Rooms</a></li>
       {{end}}
       <li class="mobile-nav-only"><a href="https://eventlogue.net/">Main Site</a></li>
     </ul>

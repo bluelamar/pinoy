@@ -3,6 +3,8 @@ package main
 
 import (
 	"fmt"
+	"html/template"
+	"log"
 	"net/http"
 )
 
@@ -15,6 +17,7 @@ type PinoySession struct {
 	SessID    string
 	CsrfToken string
 	CsrfParam string
+	Message   string
 }
 
 type PageContent struct {
@@ -36,21 +39,21 @@ func sess_attrs(r *http.Request) *PinoySession {
 
 	session, err := store.Get(r, CookieNameSID)
 	if err != nil {
-		fmt.Printf("sess_attrs: err=%v\n", err)
+		log.Printf("sess_attrs: err=%v\n", err)
 	} else {
-		fmt.Printf("sess_attrs: sess=%v\n", session)
+		fmt.Printf("sess_attrs:FIX: sess=%v\n", session)
 	}
 	for k, v := range session.Values {
-		fmt.Printf("s-key: %v", k)
-		fmt.Printf(" : s-val: %v\n", v)
+		fmt.Printf("s-key:FIX: %v", k)
+		fmt.Printf(" : s-val:FIX: %v\n", v)
 	}
 	// Check if user is authenticated
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
 		//http.Error(w, "Forbidden", http.StatusForbidden)
 		session.Values["authenticated"] = false
-		fmt.Printf("sess_attrs: set auth=%t\n", session.Values["authenticated"].(bool))
+		fmt.Printf("sess_attrs:FIX: set auth=%t\n", session.Values["authenticated"].(bool))
 	}
-	fmt.Printf("sess_attrs: auth=%t\n", session.Values["authenticated"].(bool))
+	fmt.Printf("sess_attrs:FIX: auth=%t\n", session.Values["authenticated"].(bool))
 
 	user := ""
 	if sess_user, ok := session.Values["user"].(string); ok {
@@ -85,4 +88,21 @@ func get_sess_details(r *http.Request, title, desc string) *SessionDetails {
 		pageContent,
 	}
 	return &sessDetails
+}
+
+func SendErrorPage(sess *SessionDetails, w http.ResponseWriter, webPageTmplt string, httpCode int) error {
+
+	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", webPageTmplt, "static/header.gtpl")
+	if err != nil {
+		log.Printf("SendErrorPage: %s: Parse template err: %s", webPageTmplt, err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+	err = t.Execute(w, sess)
+	if err != nil {
+		log.Printf("SendErrorPage: %s: Execute err: %s", webPageTmplt, err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+	return nil
 }

@@ -1,8 +1,9 @@
 {{ define "pagecontent" }}
 
+{{if and .Sess .Sess.User}}
+
 <h1>Room Rates</h1>
 
-{{if and .Sess .Sess.User}}
 <p><h2>Hello {{.Sess.User}}</h2></p>
 <p><h2>{{.Sess.Role}} Page</h2></p>
 
@@ -24,7 +25,7 @@
 </tr>
 
 {{else}}
-No food items to report
+No room rate items to report
 {{end}}
 </table>
 

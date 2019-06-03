@@ -1,8 +1,9 @@
 {{ define "pagecontent" }}
 
+{{if and .Sess .Sess.User}}
+
 <h1>Add or Update Room Rate</h1>
 
-{{if and .Sess .Sess.User}}
 <p><h2>Hello {{.Sess.User}}</h2></p>
 <p><h2>{{.Sess.Role}} Page</h2></p>
 

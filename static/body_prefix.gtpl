@@ -20,5 +20,17 @@
 </div>
 
 {{end}}
+
+{{$msgLen:=.Sess.Role}}
+{{if .Sess}}
+{{$msgLen:=len .Sess.Message}}
+{{if gt $msgLen 0}}
+<p>
+<div class="specialmsg">
+{{.Sess.Message}}
+</div>
+</p>
+{{end}}
+{{end}}
 </p>
 {{end}}

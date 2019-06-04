@@ -52,7 +52,7 @@ func rooms(w http.ResponseWriter, r *http.Request) {
 		}
 		rrds := make([]RoomDetails, len(rrs))
 		for k, v := range rrs {
-			log.Println("FIX got k=", k, " v=", v)
+			log.Println("rooms:FIX got k=", k, " v=", v)
 			val := v.(map[string]interface{})
 			nbs, err := strconv.Atoi(val["NumBeds"].(string))
 			if err != nil {
@@ -88,7 +88,7 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 
 		room := ""
-		rooms, ok := r.URL.Query()["room"]
+		rooms, ok := r.URL.Query()["room_num"]
 		if !ok || len(rooms[0]) < 1 {
 			log.Println("upd_room: Url Param 'room' is missing")
 		} else {
@@ -155,26 +155,42 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 			var roomData RoomDetails
 			if rMap != nil {
 				fmt.Printf("upd_room: r-map=%v\n", (*rMap))
-				/* FIXME: roomDetail, ok := (*rMap)["Room"]
-				if !ok {
-					log.Printf("upd_room: Failed to get room\n")
-					http.Error(w, "FIX: No room", http.StatusInternalServerError)
+				nbs, err := strconv.Atoi((*rMap)["NumBeds"].(string))
+				if err != nil {
+					log.Println("upd_room: Failed to comvert num rooms: err=", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
-				rd := roomDetail.(map[string]interface{}) */
-				fmt.Printf("upd_room: room=%v\n", (*rMap)) // FIX rd)
 				roomData = RoomDetails{
 					RoomNum:   (*rMap)["RoomNum"].(string),
-					NumBeds:   (*rMap)["NumBeds"].(int),
+					NumBeds:   nbs,
 					BedSize:   (*rMap)["BedSize"].(string),
 					RateClass: (*rMap)["RateClass"].(string),
 				}
 			}
 
-			// TODO read the rate classes and create slice of strings
-			rateClasses := make([]string, 0)
-			rateClasses = append(rateClasses, "3 Hours")
-			rateClasses = append(rateClasses, "6 Hours")
+			// read the rate classes and create slice of strings
+			rrs, err := PDb.ReadAll(RoomRatesEntity)
+			if err != nil {
+				log.Println("upd_room: Failed to read room rates: err=", err)
+				sessDetails.Sess.Message = "Please Add or Update Room Rates"
+				_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusConflict)
+				return
+			}
+			fmt.Println("upd_room:FIX got rates=", rrs)
+			if len(rrs) == 0 {
+				log.Println("upd_room: No room rates - ask user to update rates")
+				sessDetails.Sess.Message = `Please Add or Update Room Rates`
+				_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusNoContent)
+				return
+			}
+
+			rateClasses := make([]string, len(rrs))
+			for k, v := range rrs {
+				log.Println("upd_room:FIX got k=", k, " v=", v)
+				val := v.(map[string]interface{})
+				rateClasses[k] = val["RateClass"].(string)
+			}
 
 			updData := RoomDetailEntry{
 				sessDetails,
@@ -211,7 +227,7 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 		update := true
 		var rMap *map[string]interface{}
 		var err error
-		rMap, err = PDb.Read(RoomRatesEntity, room_num[0])
+		rMap, err = PDb.Read(RoomsEntity, room_num[0])
 		if err != nil {
 			log.Println("upd_room:POST: err=", err)
 

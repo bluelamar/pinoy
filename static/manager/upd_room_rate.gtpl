@@ -13,7 +13,7 @@
   <legend>Room Rate Details</legend>
   <table>
   <tr><td>Room Rate Class</td><td>
-  <input required placeholder="Ex: Double Bed" id="rate_class" name="rate_class" value="{{.RateData.RateClass}}">
+  <input required placeholder="Ex: Small Room" id="rate_class" name="rate_class" value="{{.RateData.RateClass}}">
   </td></tr>
 
   {{if .RateData.Rates}}

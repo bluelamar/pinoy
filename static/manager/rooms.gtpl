@@ -12,6 +12,9 @@
 
 <p>Rooms</p>
 <table>
+<tr>
+<th>Room Number</th><th>Number Beds</th><th>Bed Size</th><th>Rate Class</th><th>Update</th><th>Delete</th>
+</tr>
 {{range .Rooms}}
 
 <tr>

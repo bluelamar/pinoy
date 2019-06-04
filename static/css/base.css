@@ -3,3 +3,8 @@ table, th, td {
   border: 1px solid black;
 }
 
+div.specialmsg {
+  color: red;
+  border: 2px solid powderblue;
+  font-size: 160%;
+}

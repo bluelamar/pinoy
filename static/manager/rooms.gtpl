@@ -5,12 +5,11 @@
 <h1>Rooms</h1>
 
 <p><h2>Hello {{.Sess.User}}</h2></p>
-<p><h2>{{.Sess.Role}} Page</h2></p>
+<p><h3>{{.Sess.Role}} Page</h3></p>
 
 {{if eq .Sess.Role "Manager"}}
 <p><a id="update_room" class="button" href="/manager/upd_room?update=add">Add Room</a></p>
 
-<p>Rooms</p>
 <table>
 <tr>
 <th>Room Number</th><th>Number Beds</th><th>Bed Size</th><th>Rate Class</th><th>Update</th><th>Delete</th>

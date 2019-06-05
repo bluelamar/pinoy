@@ -5,12 +5,12 @@
 <h1>Room Rates</h1>
 
 <p><h2>Hello {{.Sess.User}}</h2></p>
-<p><h2>{{.Sess.Role}} Page</h2></p>
+<p><h3>{{.Sess.Role}} Page</h3></p>
 
 {{if eq .Sess.Role "Manager"}}
-<p><a id="update_room_rates" class="button" href="/manager/upd_room_rate?update=add">Add Room Rate</a></p>
+<p><a id="update_room_rates" class="button" href="/manager/upd_room_rate?update=add">Add Room Rate Class</a></p>
 
-<p>Rate Classes</p>
+<p><h3>Rate Classes</h3></p>
 <table>
 {{range .RateData}}
 

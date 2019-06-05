@@ -4,10 +4,10 @@
 
 {{if and .Sess .Sess.User}}
 <p><h2>Hello {{.Sess.User}}</h2></p>
-<p><h2>{{.Sess.Role}} Page</h2></p>
+<p><h3>{{.Sess.Role}} Page</h3></p>
 
 {{if eq .Sess.Role "Manager"}}
-<p><a id="update_staff" class="button" href="/manager/add_staff">Add Staff</a></p>
+<p><a id="update_staff" class="button" href="/manager/add_staff">Add New Employee</a></p>
 
 <table>
 <tr>

@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 )
 
@@ -30,6 +31,12 @@ type RateDataEntry struct {
 	*SessionDetails
 	RateData RoomRateData
 }
+
+type ByTUnit []RoomRate
+
+func (a ByTUnit) Len() int           { return len(a) }
+func (a ByTUnit) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByTUnit) Less(i, j int) bool { return a[i].TUnit < a[j].TUnit }
 
 func room_rates(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("room_rates:method:", r.Method)
@@ -65,6 +72,7 @@ func room_rates(w http.ResponseWriter, r *http.Request) {
 				}
 				rates[k2] = rr
 			}
+			sort.Sort(ByTUnit(rates))
 			rrd := RoomRateData{
 				val["RateClass"].(string),
 				rates,
@@ -127,10 +135,11 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			fmt.Printf("upd_room_rate: delete room-rate=%s\n", rate_class)
-
+			/* FIX
 			id := (*rateMap)["_id"].(string)
 			rev := (*rateMap)["_rev"].(string)
-			err := PDb.Delete(RoomRatesEntity, id, rev)
+			err := PDb.Delete(RoomRatesEntity, id, rev) */
+			err := PDb.DbwDelete(RoomRatesEntity, rateMap)
 			if err != nil {
 				sessDetails := get_sess_details(r, "Update Room Rate", "Update Room Rate page of Pinoy Lodge")
 				sessDetails.Sess.Message = "Failed to delete room rate: " + rate_class
@@ -211,7 +220,8 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		update := true
+		// FIX update := true
+		key := ""
 		var rateMap *map[string]interface{}
 		var err error
 		rateMap, err = PDb.Read(RoomRatesEntity, rate_class[0])
@@ -223,7 +233,8 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 			rateMap = &rm
 			(*rateMap)["RateClass"] = rate_class[0]
 			(*rateMap)["Rates"] = make([]interface{}, 0)
-			update = false
+			// FIX update = false
+			key = rate_class[0]
 		}
 
 		rates := (*rateMap)["Rates"]
@@ -249,12 +260,14 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 
 		// set in db
 		fmt.Printf("upd_room_rate:FIX rate_class=%s newrates=%v\n", rate_class, newRates)
+		err = PDb.DbwUpdate(RoomRatesEntity, key, rateMap)
+		/* FIX
 		if update {
 			_, err = PDb.Update(RoomRatesEntity, (*rateMap)["_id"].(string), (*rateMap)["_rev"].(string), (*rateMap))
 			fmt.Printf("upd_room_rate:FIX update rate_class=%s val=%v\n", rate_class, (*rateMap))
 		} else {
 			_, err = PDb.Create(RoomRatesEntity, rate_class[0], (*rateMap))
-		}
+		} */
 		if err != nil {
 			log.Println("upd_room_rate:POST: Failed to create or updated rate=", rate_class[0], " :err=", err)
 			http.Error(w, "Failed to create or update rate="+rate_class[0], http.StatusInternalServerError)
@@ -265,4 +278,3 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/manager/room_rates", http.StatusFound)
 	}
 }
-

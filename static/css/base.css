@@ -3,6 +3,30 @@ table, th, td {
   border: 1px solid black;
 }
 
+h1 {
+  color: black;
+  border: 2px solid blue;
+  font-size: 175%;
+  font-family: courier;
+  background-color: hsl(120,60%,70%);
+}
+h2 {
+  color: black;
+  font-size: 135%;
+}
+h3 {
+  color: black;
+  border: 2px solid powderblue;
+  font-size: 100%;
+}
+
+div.header {
+  color: black;
+  border: 1px solid black;
+  font-size: 200%;
+  background-color: hsl(120,100%,75%);
+  font-family: courier;
+}
 div.specialmsg {
   color: red;
   border: 2px solid powderblue;

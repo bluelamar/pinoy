@@ -1,5 +1,7 @@
 {{ define "body_prefix" }}
-
+<div class="header">
+Pinoy Lodge
+</div>
 <p>
 <a href="/frontpage">Front Desk</a>
 

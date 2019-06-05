@@ -126,10 +126,11 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			fmt.Printf("upd_room: delete room=%s\n", room)
-
+			/* FIX
 			id := (*rMap)["_id"].(string)
 			rev := (*rMap)["_rev"].(string)
-			err := PDb.Delete(RoomsEntity, id, rev)
+			err := PDb.Delete(RoomsEntity, id, rev) */
+			err := PDb.DbwDelete(RoomsEntity, rMap)
 			if err != nil {
 				sessDetails := get_sess_details(r, "Update Room", "Update Room page of Pinoy Lodge")
 				sessDetails.Sess.Message = "Failed to delete room: " + room
@@ -234,8 +235,8 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 			// no such entry so the room must be new
 			rm := make(map[string]interface{})
 			rMap = &rm
-			(*rMap)["NumBeds"] = num_beds[0]
 			(*rMap)["RoomNum"] = room_num[0]
+			(*rMap)["NumBeds"] = num_beds[0]
 			(*rMap)["RateClass"] = room_rate[0]
 			(*rMap)["BedSize"] = bed_size[0]
 			update = false

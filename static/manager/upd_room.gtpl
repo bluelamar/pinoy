@@ -5,7 +5,7 @@
 <h1>Add or Update Room</h1>
 
 <p><h2>Hello {{.Sess.User}}</h2></p>
-<p><h2>{{.Sess.Role}} Page</h2></p>
+<p><h3>{{.Sess.Role}} Page</h3></p>
 
 {{if eq .Sess.Role "Manager"}}
 

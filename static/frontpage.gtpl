@@ -1,6 +1,6 @@
 {{ define "pagecontent" }}
 
-  <h1>Pinoy Front Desk</h1>
+  <h1>Front Desk</h1>
 {{if and .Sess.Auth .Sess.User}}
   <p><h2>Hello {{.Sess.User}}</h2></p>
 

@@ -93,11 +93,11 @@ func NewDatabase(cfg *PinoyConfig) (*DBInterface, error) {
 func (dbi *DBInterface) Create(entity, key string, val interface{}) (*map[string]interface{}, error) {
 	// create: POST -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/link/${ENTITY} -d "${DATA}"
 	url := dbi.baseUrl + entity
-	var valMap map[string]interface{}
-	valMap = val.(map[string]interface{})
+	valMap := val.(map[string]interface{})
 	if key != "" {
 		valMap["_id"] = key
 	}
+
 	bytesRepresentation, err := json.Marshal(valMap)
 	if err != nil {
 		return nil, err
@@ -273,15 +273,52 @@ func (dbi *DBInterface) Find(entity, field, value string) ([]interface{}, error)
 			return (List<Object>)retObj;
 		} */
 	entity = entity + "/_find"
-	val := `{"selector":{"` + field + `":{"$eq":"` + value + `"}}}`
-	var ret *map[string]interface{}
+	// TODO change how to make json for val
+	//val := `{"selector":{"` + field + `":{"$eq":"` + value + `"}}}`
+	eqm := map[string]string{"$eq": value} // make(map[string]interface{})
+	//eqm["$eq"] = value
+	fldm := map[string]interface{}{field: eqm}
+	//fldm[field] = eqm
+	sel := map[string]interface{}{"selector": fldm} // make(map[string]interface{})
+	//sel["selector"] = fldm
+	log.Println("FIX Find: entity=", entity, " :val=", sel) // FIX val)
+	// FIX var ret *map[string]interface{}
 	var err error
-	ret, err = dbi.Create(entity, "", val)
-	err = checkResultError(ret, err)
+	//ret, err = dbi.Create(entity, "", val)
+	url := dbi.baseUrl + entity
+	bytesRepresentation, err := json.Marshal(sel) // FIX val)
 	if err != nil {
 		return nil, err
 	}
-	return (*ret)["docs"].([]interface{}), nil
+	//log.Println("FIX create:body=", bytesRepresentation)
+	request, err := http.NewRequest("POST", url, bytes.NewReader(bytesRepresentation))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
+
+	resp, err := dbi.client.Do(request)
+	if err != nil {
+		log.Println("FIX find: client res=", resp, " :err=", err)
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	log.Println("FIX find: decoder=", result)
+	err = checkResultError(&result, err)
+	if err != nil {
+		return nil, err
+	}
+	log.Println("FIX find: res=", result)
+	/* FIX
+	err = checkResultError(ret, err)
+	if err != nil {
+		return nil, err
+	} */
+	//return (*ret)["docs"].([]interface{}), nil
+	return result["docs"].([]interface{}), nil
 }
 
 func checkResultError(result *map[string]interface{}, err error) error {

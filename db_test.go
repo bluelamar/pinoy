@@ -84,6 +84,12 @@ func TestCreate(t *testing.T) {
 	}
 	t.Logf("readall entity=%s val=%v\n", entity, resArray)
 
+	fres, err := dbInt.Find("room_rates", "RateClass", "Small Room")
+	if err != nil {
+		t.Error(`db find error`, err)
+	}
+	t.Logf("find entity=%s val=%v\n", entity, fres)
+
 	err = dbInt.Delete(entity, id, rev)
 	if err != nil {
 		t.Error(`db delete error`, err)

@@ -16,9 +16,13 @@
     </td></tr><tr><td>Last Name</td><td>
     <input required placeholder="Last Name" label="false" spellcheck="false" class="is-sensitive"  value="" name="last_name" id="last_name" />
     </td></tr><tr><td>Duration</td><td>
-    <input required placeholder="Duration" label="false" spellcheck="false" class="is-sensitive"  value="" name="duration" id="duration" />
+    <select id="room_rate" name="room_rate" >
+    {{range $element := .DurationOptions}}
+      <option value="{{$element}}">{{$element}}</option>
+    {{end}}
+    </select>
     </td></tr><tr><td>Room Number</td><td>
-    <input required placeholder="Room Number" id="room_num" name="room_num" value="{{.RoomNum}}">
+    <input readonly placeholder="Room Number" id="room_num" name="room_num" value="{{.RoomNum}}">
     </td></tr></table>
     <input type="submit" name="commit" value="Register" />
   </form>

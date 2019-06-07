@@ -26,7 +26,7 @@
   <select value="{{.Room.RateClass}}" id="room_rate" name="room_rate" >
   {{range $element := .RateClasses}}
     {{if eq $element $rateClass}}
-    <option selected>$element</option>
+    <option selected>{{$element}}</option>
     {{else}}
     <option value="{{$element}}">{{$element}}</option>
     {{end}}

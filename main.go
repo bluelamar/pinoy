@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
@@ -150,114 +149,6 @@ func frontpage(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("frontpage err=", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-	}
-}
-
-type RegisterData struct {
-	*SessionDetails
-	RoomNum string
-}
-
-func register(w http.ResponseWriter, r *http.Request) {
-	t := time.Now()
-	fmt.Printf("register:method=%s time=%s\n", r.Method, t.Local())
-
-	if r.Method == "GET" {
-
-		rooms, ok := r.URL.Query()["room"]
-		if !ok || len(rooms[0]) < 1 {
-			log.Println("register: Url Param 'room' is missing")
-			return
-		}
-		// Query()["room"] will return an array of items, we only want the single item.
-		room := rooms[0]
-
-		fmt.Printf("register: room=%s\n", room)
-
-		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/register.gtpl", "static/header.gtpl")
-		if err != nil {
-			fmt.Printf("register:err: %s", err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		} else {
-			sessDetails := get_sess_details(r, "Registration", "Register page to Pinoy Lodge")
-			regData := RegisterData{
-				sessDetails,
-				room,
-			}
-			err = t.Execute(w, regData)
-			if err != nil {
-				fmt.Println("register err=", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		}
-	} else {
-		fmt.Println("register: should be post")
-		r.ParseForm()
-		for k, v := range r.Form {
-			fmt.Println("key:", k)
-			fmt.Println("val:", strings.Join(v, ""))
-		}
-		fname := r.Form["first_name"]
-		lname := r.Form["last_name"]
-		duration := r.Form["duration"]
-		room_num := r.Form["room_num"]
-
-		// TODO set in db
-		fmt.Printf("register: first-name=%s last-name=%s room-num=%s duration=%s\n", fname, lname, room_num, duration)
-
-		fmt.Printf("register: post about to redirect to room_hop for room=%s\n", room_num)
-		http.Redirect(w, r, "/desk/room_hop?room="+room_num[0], http.StatusFound)
-	}
-}
-
-func room_hop(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("room_hop:method:", r.Method)
-	// item size room
-	// for get - prefill fields based on query parameters
-	if r.Method == "GET" {
-
-		room := ""
-		rooms, ok := r.URL.Query()["room"]
-		if !ok || len(rooms[0]) < 1 {
-			log.Println("room_hop: Url Param 'room' is missing")
-		} else {
-			room = rooms[0]
-		}
-
-		fmt.Printf("room_hop: room=%s\n", room)
-
-		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/room_hop.gtpl", "static/header.gtpl")
-		if err != nil {
-			fmt.Printf("room_hop:err: %s", err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		} else {
-			sessDetails := get_sess_details(r, "Room Bell Hop", "Bell Hop page of Pinoy Lodge")
-			regData := RegisterData{
-				sessDetails,
-				room,
-			}
-			err = t.Execute(w, regData)
-			if err != nil {
-				fmt.Println("room_hop err=", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		}
-	} else {
-		fmt.Println("room_hop: should be post")
-		r.ParseForm()
-		for k, v := range r.Form {
-			fmt.Println("key:", k)
-			fmt.Println("val:", strings.Join(v, ""))
-		}
-
-		bell_hop_pin := r.Form["bell_hop_pin"]
-		room_num := r.Form["room_num"]
-
-		// TODO set in db - date + timestamp + bell_hop_pin + room_num
-		fmt.Printf("room_hop: bell-hop-pin=%s room-num=%s\n", bell_hop_pin, room_num)
-
-		fmt.Printf("room_hop: post about to redirect to room_status\n")
-		http.Redirect(w, r, "/desk/room_status", http.StatusFound)
 	}
 }
 

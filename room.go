@@ -148,61 +148,58 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("upd_room_:err: %s", err.Error())
 			sessDetails.Sess.Message = "Failed to Update room: " + room
 			err = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			return
+		}
+
+		var roomData RoomDetails
+		if rMap != nil {
+			fmt.Printf("upd_room: r-map=%v\n", (*rMap))
+			nbs, err := strconv.Atoi((*rMap)["NumBeds"].(string))
 			if err != nil {
+				log.Println("upd_room: Failed to comvert num rooms: err=", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-		} else {
+			roomData = RoomDetails{
+				RoomNum:   (*rMap)["RoomNum"].(string),
+				NumBeds:   nbs,
+				BedSize:   (*rMap)["BedSize"].(string),
+				RateClass: (*rMap)["RateClass"].(string),
+			}
+		}
 
-			var roomData RoomDetails
-			if rMap != nil {
-				fmt.Printf("upd_room: r-map=%v\n", (*rMap))
-				nbs, err := strconv.Atoi((*rMap)["NumBeds"].(string))
-				if err != nil {
-					log.Println("upd_room: Failed to comvert num rooms: err=", err)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-				roomData = RoomDetails{
-					RoomNum:   (*rMap)["RoomNum"].(string),
-					NumBeds:   nbs,
-					BedSize:   (*rMap)["BedSize"].(string),
-					RateClass: (*rMap)["RateClass"].(string),
-				}
-			}
+		// read the rate classes and create slice of strings
+		rrs, err := PDb.ReadAll(RoomRatesEntity)
+		if err != nil {
+			log.Println("upd_room: Failed to read room rates: err=", err)
+			sessDetails.Sess.Message = "Please Add or Update Room Rates"
+			_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusConflict)
+			return
+		}
+		fmt.Println("upd_room:FIX got rates=", rrs)
+		if len(rrs) == 0 {
+			log.Println("upd_room: No room rates - ask user to update rates")
+			sessDetails.Sess.Message = `Please Add or Update Room Rates`
+			_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusNoContent)
+			return
+		}
 
-			// read the rate classes and create slice of strings
-			rrs, err := PDb.ReadAll(RoomRatesEntity)
-			if err != nil {
-				log.Println("upd_room: Failed to read room rates: err=", err)
-				sessDetails.Sess.Message = "Please Add or Update Room Rates"
-				_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusConflict)
-				return
-			}
-			fmt.Println("upd_room:FIX got rates=", rrs)
-			if len(rrs) == 0 {
-				log.Println("upd_room: No room rates - ask user to update rates")
-				sessDetails.Sess.Message = `Please Add or Update Room Rates`
-				_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusNoContent)
-				return
-			}
+		rateClasses := make([]string, len(rrs))
+		for k, v := range rrs {
+			log.Println("upd_room:FIX got k=", k, " v=", v)
+			val := v.(map[string]interface{})
+			rateClasses[k] = val["RateClass"].(string)
+		}
 
-			rateClasses := make([]string, len(rrs))
-			for k, v := range rrs {
-				log.Println("upd_room:FIX got k=", k, " v=", v)
-				val := v.(map[string]interface{})
-				rateClasses[k] = val["RateClass"].(string)
-			}
-
-			updData := RoomDetailEntry{
-				sessDetails,
-				roomData,
-				rateClasses,
-			}
-			err = t.Execute(w, updData)
-			if err != nil {
-				log.Println("upd_room: err=", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
-			}
+		updData := RoomDetailEntry{
+			sessDetails,
+			roomData,
+			rateClasses,
+		}
+		err = t.Execute(w, updData)
+		if err != nil {
+			log.Println("upd_room: err=", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
 		}
 	} else {
 		fmt.Println("upd_room: should be post")
@@ -225,6 +222,7 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		key := ""
 		update := true
 		var rMap *map[string]interface{}
 		var err error
@@ -240,21 +238,53 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 			(*rMap)["RateClass"] = room_rate[0]
 			(*rMap)["BedSize"] = bed_size[0]
 			update = false
+			key = room_num[0]
 		} else {
 			(*rMap)["NumBeds"] = num_beds[0]
 			(*rMap)["RateClass"] = room_rate[0]
 			(*rMap)["BedSize"] = bed_size[0]
 		}
 
-		if update {
-			_, err = PDb.Update(RoomsEntity, (*rMap)["_id"].(string), (*rMap)["_rev"].(string), (*rMap))
-			fmt.Printf("upd_room_rate:FIX update room_num=%s val=%v\n", room_num, (*rMap))
-		} else {
-			_, err = PDb.Create(RoomsEntity, room_num[0], (*rMap))
-		}
+		fmt.Printf("upd_room:FIX update room_num=%s val=%v\n", room_num, (*rMap))
+		err = PDb.DbwUpdate(RoomsEntity, key, rMap)
 		if err != nil {
 			log.Println("upd_room:POST: Failed to create or update room=", room_num[0], " :err=", err)
 			http.Error(w, "Failed to create or update room="+room_num[0], http.StatusInternalServerError)
+			return
+		}
+
+		// if existing room updated - update the status in case the rate was changed
+		// else if new room then create a new status record
+		var roomStatus *map[string]interface{}
+		key = ""
+		if update {
+			//_, err = PDb.Update(RoomsEntity, (*rMap)["_id"].(string), (*rMap)["_rev"].(string), (*rMap))
+			roomStatus, err = PDb.Read(RoomStatusEntity, room_num[0])
+			fmt.Printf("upd_room:FIX update status room_num=%s val=%v\n", room_num, (*rMap))
+			if err == nil {
+				(*roomStatus)["Rate"] = room_rate[0]
+			}
+		}
+		if roomStatus == nil {
+			// create the room status record for this room
+			rs := make(map[string]interface{})
+			rs["RoomNum"] = room_num[0]
+			rs["Status"] = "open"
+			rs["GuestInfo"] = ""
+			rs["CheckinTime"] = ""
+			rs["Rate"] = room_rate[0]
+			roomStatus = &rs
+			key = room_num[0]
+		}
+		err = PDb.DbwUpdate(RoomStatusEntity, key, roomStatus)
+		if err != nil {
+			log.Println("upd_room:POST: Failed to create or update room status=", room_num[0], " :err=", err)
+			http.Error(w, "Failed to create or update room status="+room_num[0], http.StatusInternalServerError)
+			return
+
+			sessDetails := get_sess_details(r, "Update Room", "Update Room page of Pinoy Lodge")
+			sessDetails.Sess.Message = "Failed to update room status: room=" + room_num[0]
+			err = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
 		}
 

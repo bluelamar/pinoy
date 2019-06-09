@@ -158,7 +158,6 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 			sessDetails.Sess.Message = "Failed to update room rate: " + rate_class
 			err = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			if err != nil {
-				// FIX http.Redirect(w, r, "/manager/room_rates", http.StatusInternalServerError)
 				return
 			}
 		} else {
@@ -209,9 +208,10 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 		}
 
 		rate_class := r.Form["rate_class"]
+		newNumUnits := r.Form["num_units"]
 		newTimeUnit := r.Form["new_rate_time_unit"]
 		newCost := r.Form["new_rate_cost"]
-		fmt.Printf("upd_room_rate: rate_class=%s time-unit=%s cost=%s\n", rate_class, newTimeUnit, newCost)
+		fmt.Printf("upd_room_rate: rate_class=%s num-units=%s time-unit=%s cost=%s\n", rate_class, newNumUnits, newTimeUnit, newCost)
 
 		// validate incoming form fields
 		if len(rate_class[0]) == 0 || len(newTimeUnit[0]) == 0 || len(newCost[0]) == 0 {
@@ -220,7 +220,9 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// FIX update := true
+		newTimeUnitStr := newNumUnits[0] + " " + newTimeUnit[0]
+		fmt.Println("upd_room_rate:FIX new tu=", newTimeUnitStr)
+
 		key := ""
 		var rateMap *map[string]interface{}
 		var err error
@@ -233,7 +235,6 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 			rateMap = &rm
 			(*rateMap)["RateClass"] = rate_class[0]
 			(*rateMap)["Rates"] = make([]interface{}, 0)
-			// FIX update = false
 			key = rate_class[0]
 		}
 
@@ -245,14 +246,14 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 		for _, v := range rts {
 			v2 := v.(map[string]interface{})
 			tu := v2["TUnit"].(string)
-			if newTimeUnit[0] == tu {
+			if newTimeUnitStr == tu {
 				continue
 			}
 			newRates = append(newRates, v2)
 		}
 
 		newRate := make(map[string]interface{})
-		newRate["TUnit"] = newTimeUnit[0]
+		newRate["TUnit"] = newTimeUnitStr // FIX newTimeUnit[0]
 		newRate["Cost"] = newCost[0]
 
 		newRates = append(newRates, newRate)
@@ -261,13 +262,6 @@ func upd_room_rate(w http.ResponseWriter, r *http.Request) {
 		// set in db
 		fmt.Printf("upd_room_rate:FIX rate_class=%s newrates=%v\n", rate_class, newRates)
 		err = PDb.DbwUpdate(RoomRatesEntity, key, rateMap)
-		/* FIX
-		if update {
-			_, err = PDb.Update(RoomRatesEntity, (*rateMap)["_id"].(string), (*rateMap)["_rev"].(string), (*rateMap))
-			fmt.Printf("upd_room_rate:FIX update rate_class=%s val=%v\n", rate_class, (*rateMap))
-		} else {
-			_, err = PDb.Create(RoomRatesEntity, rate_class[0], (*rateMap))
-		} */
 		if err != nil {
 			log.Println("upd_room_rate:POST: Failed to create or updated rate=", rate_class[0], " :err=", err)
 			http.Error(w, "Failed to create or update rate="+rate_class[0], http.StatusInternalServerError)

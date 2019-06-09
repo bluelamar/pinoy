@@ -2,6 +2,11 @@ FROM apache/couchdb:latest
 
 COPY cdb-local.ini /opt/couchdb/etc/local.d
 
+RUN mkdir -p /var/opt/couchdb/db
+RUN mkdir    /var/opt/couchdb/logs
+
+VOLUME /var/opt/couchdb
+
 EXPOSE 5984
 
 ENV NAME pinoy-cdb-1

@@ -23,7 +23,12 @@
   {{end}}
 
   <tr><td>New Rate Time Unit</td><td>
-  <input required placeholder="Ex: Daily" id="new_rate_time_unit" name="new_rate_time_unit" spellcheck="false" value="" />
+  <input required placeholder="Number" id="num_units" type="number" min="1" max="12" value="3" name="num_units" />
+  
+  <select value="Hours" id="new_rate_time_unit" name="new_rate_time_unit" >
+    <option selected>Hours</option>
+    <option>Days</option>
+  </select>
   </td></tr>
   <tr><td>New Rate Cost per Time Unit</td><td>
   <input required placeholder="Ex: $50" id="new_rate_cost" name="new_rate_cost" spellcheck="false" value="" />

@@ -16,7 +16,7 @@
     </td></tr><tr><td>Last Name</td><td>
     <input required placeholder="Last Name" label="false" spellcheck="false" class="is-sensitive"  value="" name="last_name" id="last_name" />
     </td></tr><tr><td>Duration</td><td>
-    <select id="room_rate" name="room_rate" >
+    <select id="duration" name="duration" >
     {{range $element := .DurationOptions}}
       <option value="{{$element}}">{{$element}}</option>
     {{end}}

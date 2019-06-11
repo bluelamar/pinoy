@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
@@ -21,6 +22,7 @@ var store = sessions.NewCookieStore([]byte("something-very-secret"))
 
 var PCfg *PinoyConfig
 var PDb *DBInterface
+var Locale *time.Location
 
 const CookieNameSID string = "PinoySID"
 
@@ -152,22 +154,43 @@ func frontpage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func TimeNow() string {
+	var now time.Time
+	if Locale == nil {
+		now = time.Now()
+	} else {
+		now = time.Now().In(Locale)
+	}
+	fmt.Println("timeNow:FIX got singapore now=", now)
+	nowStr := fmt.Sprintf("%d-%02d-%02d %02d:%02d\n",
+		now.Year(), now.Month(), now.Day(),
+		now.Hour(), now.Minute())
+	return nowStr
+}
+
 func main() {
 	/* FIX TODO   setup templates first
 	 */
 
 	cfg, err := LoadConfig("/etc/pinoy/config.json")
 	if err != nil {
-		log.Printf("pinoy:main: config load error: %v", err)
+		log.Printf("main: config load error: %v", err)
 	} else {
-		log.Printf("pinoy:main: cfg: %v", *cfg)
+		log.Printf("main: cfg: %v", *cfg)
 		PCfg = cfg
+	}
+
+	loc, err := time.LoadLocation("Singapore")
+	if err != nil {
+		log.Println("main: Failed to load singapore time location: Using default time: err=", err)
+	} else {
+		Locale = loc
 	}
 
 	// initialize DB
 	db, err := NewDatabase(PCfg)
 	if err != nil {
-		log.Printf("pinoy:main: db init error: %v", err)
+		log.Printf("main: db init error: %v", err)
 		log.Fatal("Failed to create db: ", err)
 	} else {
 		log.Printf("pinoy:main: db init success")

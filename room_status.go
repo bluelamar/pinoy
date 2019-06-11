@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -14,17 +15,18 @@ const (
 )
 
 type RoomState struct {
-	RoomNum     string
-	Status      string
-	GuestInfo   string
-	CheckinTime string
-	Rate        string
+	RoomNum      string
+	Status       string
+	GuestInfo    string
+	CheckinTime  string
+	CheckoutTime string
+	Rate         string
 }
 
 type RoomStateTable struct {
 	*SessionDetails
-	Rooms     []RoomState
-	OpenRooms string
+	Rooms         []RoomState
+	OpenRoomsOnly bool
 }
 type RoomStateEntry struct {
 	*SessionDetails
@@ -46,10 +48,8 @@ func room_status(w http.ResponseWriter, r *http.Request) {
 		log.Println("register: Url Param 'register' is missing so list all rooms")
 	}
 
-	openRoom := ""
 	if len(open_rooms) > 0 {
-		openRoom = open_rooms[0]
-		if openRoom == "open" {
+		if open_rooms[0] == "open" {
 			open_rooms_only = true
 		}
 	}
@@ -61,7 +61,6 @@ func room_status(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		var roomStati []interface{}
-		// FIX if open_rooms_only then Find else ReadAll
 
 		if open_rooms_only {
 			roomStati, err = PDb.Find(RoomStatusEntity, "Status", "open")
@@ -69,7 +68,7 @@ func room_status(w http.ResponseWriter, r *http.Request) {
 			roomStati, err = PDb.Find(RoomStatusEntity, "Status", "booked")
 		}
 		if err != nil {
-			log.Printf("room_status: Find %s rooms: err: %s\n", openRoom, err.Error())
+			log.Printf("room_status: Find %s rooms: err: %s\n", open_rooms[0], err.Error())
 			// FIX http.Error(w, err.Error(), http.StatusInternalServerError)
 			// FIX return
 		}
@@ -77,6 +76,7 @@ func room_status(w http.ResponseWriter, r *http.Request) {
 
 		rtbl := make([]RoomState, len(roomStati))
 		for k, v := range roomStati {
+			fmt.Println("room_status:FIX k=", k, " :v=", v)
 			val := v.(map[string]interface{})
 			rs := RoomState{
 				RoomNum:     val["RoomNum"].(string),
@@ -93,7 +93,7 @@ func room_status(w http.ResponseWriter, r *http.Request) {
 		roomData := RoomStateTable{
 			sessDetails,
 			rtbl,
-			openRoom,
+			open_rooms_only,
 		}
 		err = t.Execute(w, &roomData)
 		if err != nil {
@@ -101,6 +101,59 @@ func room_status(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
+}
+
+func CalcCheckoutTime(checkinTime, duration string) (string, error) {
+	// ex checkinTime: 2019-06-11 12:49
+	ci := strings.Split(checkinTime, " ")
+	date, hourMin := ci[0], ci[1]
+	dateSlice := strings.Split(date, "-")
+	hm := strings.Split(hourMin, ":")
+	hourStr := hm[0]
+	min := hm[1]
+	hourNum, err := strconv.Atoi(hourStr)
+	if err != nil {
+		return "", err
+	}
+
+	// ex duration: 3 Hours
+	dur := strings.Split(duration, " ")
+	dnum := dur[0]
+	dunit := dur[1]
+	durNum, err := strconv.Atoi(dnum)
+	if err != nil {
+		return "", err
+	}
+	dnumUnit := 1
+	if dunit == "Days" {
+		dnumUnit = 24
+	}
+
+	newDate := date
+	newHourMin := ""
+	// Handle crossover midnight
+	newHour := hourNum + (durNum * dnumUnit)
+	if newHour >= 24 {
+		// crossed to a following day
+		nHour := newHour % 24
+		numDays := newHour / 24
+		newHour = nHour
+		// parse to get new day from the date, ex: 2019-06-11
+		day, err := strconv.Atoi(dateSlice[2])
+		if err != nil {
+			return "", err
+		}
+		day += numDays
+		if day > 30 { // FIX TODO need to check calendar feb=28, etc
+			// Handle crossover to next month - and crossover to the next year
+		}
+		dayStr := strconv.Itoa(day)
+		newDate = dateSlice[0] + "-" + dateSlice[1] + "-" + dayStr
+	}
+
+	hourStr = strconv.Itoa(newHour)
+	newHourMin = hourStr + ":" + min
+	return newDate + " " + newHourMin, nil
 }
 
 func register(w http.ResponseWriter, r *http.Request) {
@@ -182,6 +235,36 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 		// TODO set in db
 		fmt.Printf("register: first-name=%s last-name=%s room-num=%s duration=%s\n", fname, lname, room_num, duration)
+		// read room status record and reset as booked with customers name
+		rs, err := PDb.Read(RoomStatusEntity, room_num[0])
+		if err != nil {
+			log.Println("register: Failed to read room status for room=", room_num[0], " :err=", err)
+			sessDetails := get_sess_details(r, "Registration", "Register page of Pinoy Lodge")
+			sessDetails.Sess.Message = "Failed to read room status: room=" + room_num[0]
+			err = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("register:FIX read room num=", room_num[0], " :room=", rs)
+
+		(*rs)["Status"] = "booked"
+		(*rs)["GuestInfo"] = fname[0] + " " + lname[0]
+
+		nowStr := TimeNow()
+		(*rs)["CheckinTime"] = nowStr
+		checkOutTime, err := CalcCheckoutTime(nowStr, duration[0])
+		(*rs)["CheckoutTime"] = checkOutTime
+		fmt.Println("register:FIX got singapore nowStr=", nowStr, " :checkout=", checkOutTime)
+
+		// put status record back into db
+		// FIX TODO record for the customer ?
+		err = PDb.DbwUpdate(RoomStatusEntity, "", rs)
+		if err != nil {
+			log.Println("register: Failed to update room status for room=", room_num[0], " :err=", err)
+			sessDetails := get_sess_details(r, "Registration", "Register page of Pinoy Lodge")
+			sessDetails.Sess.Message = "Failed to read room status: room=" + room_num[0]
+			err = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			return
+		}
 
 		fmt.Printf("register: post about to redirect to room_hop for room=%s\n", room_num)
 		http.Redirect(w, r, "/desk/room_hop?room="+room_num[0], http.StatusFound)

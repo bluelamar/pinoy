@@ -228,7 +228,7 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 		var err error
 		rMap, err = PDb.Read(RoomsEntity, room_num[0])
 		if err != nil {
-			log.Println("upd_room:POST: err=", err)
+			log.Println("upd_room:POST: room num=", room_num[0], " :err=", err)
 
 			// no such entry so the room must be new
 			rm := make(map[string]interface{})

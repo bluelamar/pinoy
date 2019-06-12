@@ -154,10 +154,15 @@ func TestCreate(t *testing.T) {
 	// try again - should get error
 	err = dbInt.Delete(entity, id, rev)
 	if err != nil {
-		t.Logf(`repeat db delete: get error=%v`, err)
+		t.Logf("repeat db delete: get error=%v\n", err)
 	} else {
 		t.Error(`repeated delete should have gotten error`)
 	}
+
+	nowStr := TimeNow()
+	t.Logf("TimeNow returns=%s\n", nowStr)
+	checkOutTime, err := CalcCheckoutTime(nowStr, "3 Hours")
+	t.Logf("CalcCheckoutTime returns=(%s) err=%v\n", checkOutTime, err)
 }
 
 func TestEncrypt(t *testing.T) {

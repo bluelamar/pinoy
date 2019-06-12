@@ -159,10 +159,11 @@ func TimeNow() string {
 	if Locale == nil {
 		now = time.Now()
 	} else {
+		// TODO use alternative to subtract time from utc
 		now = time.Now().In(Locale)
 	}
 	fmt.Println("timeNow:FIX got singapore now=", now)
-	nowStr := fmt.Sprintf("%d-%02d-%02d %02d:%02d\n",
+	nowStr := fmt.Sprintf("%d-%02d-%02d %02d:%02d",
 		now.Year(), now.Month(), now.Day(),
 		now.Hour(), now.Minute())
 	return nowStr

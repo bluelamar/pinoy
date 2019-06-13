@@ -4,6 +4,7 @@ import (
 
 	//"fmt"
 	"testing"
+	"time"
 )
 
 var dbInt *DBInterface
@@ -159,10 +160,43 @@ func TestCreate(t *testing.T) {
 		t.Error(`repeated delete should have gotten error`)
 	}
 
-	nowStr := TimeNow()
-	t.Logf("TimeNow returns=%s\n", nowStr)
-	checkOutTime, err := CalcCheckoutTime(nowStr, "3 Hours")
+	loc, err := time.LoadLocation("Singapore")
+	nowStr, nowTime := TimeNow(loc)
+	t.Logf("TimeNow returns loc=%v str=%s tn=%v\n", loc, nowStr, nowTime)
+	checkOutTime, err := CalcCheckoutTime(nowTime, "3 Hours")
 	t.Logf("CalcCheckoutTime returns=(%s) err=%v\n", checkOutTime, err)
+
+	loc = time.FixedZone("UTC-8", -8*60*60)
+	nowStr, nowTime = TimeNow(loc)
+	t.Logf("TimeNow returns loc=%v str=%s tn=%v\n", loc, nowStr, nowTime)
+
+	loc = time.FixedZone("UTC-8", 8*60*60)
+	nowStr, nowTime = TimeNow(loc)
+	t.Logf("TimeNow returns loc=%v str=%s tn=%v\n", loc, nowStr, nowTime)
+
+	role := "Manager"
+	if role == "Manager" {
+		t.Logf("role == Manager is correct\n")
+	} else {
+		t.Logf("Failed: role == %s\n", role)
+	}
+	if role != "Manager" {
+		t.Logf("Failed: role == %s\n", role)
+	} else {
+		t.Logf("role == Manager is correct\n")
+	}
+
+	role = "Desk"
+	if role == "Manager" {
+		t.Logf("Failed: role == Manager but should be Desk\n")
+	} else {
+		t.Logf("Success: role == %s\n", role)
+	}
+	if role != "Desk" {
+		t.Logf("Failed: role == %s\n", role)
+	} else {
+		t.Logf("role == Desk is correct\n")
+	}
 }
 
 func TestEncrypt(t *testing.T) {

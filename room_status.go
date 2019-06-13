@@ -104,8 +104,9 @@ func room_status(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CalcCheckoutTime(checkinTime, duration string) (string, error) {
+func CalcCheckoutTime(ciTime time.Time, duration string) (string, error) {
 	// ex checkinTime: 2019-06-11 12:49
+	/* FIX
 	ci := strings.Split(checkinTime, " ")
 	date, hourMin := ci[0], ci[1]
 	dateSlice := strings.Split(date, "-")
@@ -116,7 +117,7 @@ func CalcCheckoutTime(checkinTime, duration string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	*/
 	/* FIX
 	start := time.Date(2009, 1, 1, 12, 0, 0, 0, time.UTC)
 		afterTenMinutes := start.Add(time.Minute * 10)
@@ -136,6 +137,15 @@ func CalcCheckoutTime(checkinTime, duration string) (string, error) {
 		dnumUnit = 24
 	}
 
+	newDate := ciTime.Add(time.Hour * time.Duration(durNum) * time.Duration(dnumUnit))
+
+	nowStr := fmt.Sprintf("%d-%02d-%02d %02d:%02d",
+		newDate.Year(), newDate.Month(), newDate.Day(),
+		newDate.Hour(), newDate.Minute())
+
+	return nowStr, nil
+
+	/* FIX
 	newDate := date
 	newHourMin := ""
 	// Handle crossover midnight
@@ -163,6 +173,7 @@ func CalcCheckoutTime(checkinTime, duration string) (string, error) {
 	newHourMin = hourStr + ":" + min
 	fmt.Println("register:FIX hourstr=", hourStr, " :min=", min, " :newhour=", newHour)
 	return newDate + " " + newHourMin, nil
+	*/
 }
 
 func checkoutRoom(room string, w http.ResponseWriter, r *http.Request) error {
@@ -192,6 +203,14 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request) error {
 func register(w http.ResponseWriter, r *http.Request) {
 	t := time.Now()
 	fmt.Printf("register:method=%s time=%s\n", r.Method, t.Local())
+
+	// check session expiration and authorization
+	sessDetails := get_sess_details(r, "Registration", "Register page of Pinoy Lodge")
+	if sessDetails.Sess.Role == "" {
+		sessDetails.Sess.Message = "No Permissions"
+		_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		return
+	}
 
 	if r.Method == "GET" {
 
@@ -226,6 +245,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 		rateMap, err := PDb.Read(RoomRatesEntity, rate)
 		if err != nil {
 			log.Printf("register: Failed to read rate class=%s :err=%s\n", rate, err.Error())
+			// FIX SendErrorPage
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -254,13 +274,11 @@ func register(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("register:FIX:err: %s", err.Error())
 			//http.Error(w, err.Error(), http.StatusInternalServerError)
 			log.Println("register: Failed to make register page for room=", room, " :err=", err)
-			sessDetails := get_sess_details(r, "Registration", "Register page of Pinoy Lodge")
 			sessDetails.Sess.Message = "Failed to make register page: room=" + room
 			err = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
 		}
 
-		sessDetails := get_sess_details(r, "Registration", "Register page of Pinoy Lodge")
 		regData := RegisterData{
 			sessDetails,
 			room,
@@ -293,7 +311,6 @@ func register(w http.ResponseWriter, r *http.Request) {
 		rs, err := PDb.Read(RoomStatusEntity, room_num[0])
 		if err != nil {
 			log.Println("register: Failed to read room status for room=", room_num[0], " :err=", err)
-			sessDetails := get_sess_details(r, "Registration", "Register page of Pinoy Lodge")
 			sessDetails.Sess.Message = "Failed to read room status: room=" + room_num[0]
 			err = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
@@ -303,9 +320,9 @@ func register(w http.ResponseWriter, r *http.Request) {
 		(*rs)["Status"] = "booked"
 		(*rs)["GuestInfo"] = fname[0] + " " + lname[0]
 
-		nowStr := TimeNow()
+		nowStr, nowTime := TimeNow(Locale)
 		(*rs)["CheckinTime"] = nowStr
-		checkOutTime, err := CalcCheckoutTime(nowStr, duration[0])
+		checkOutTime, err := CalcCheckoutTime(nowTime, duration[0])
 		(*rs)["CheckoutTime"] = checkOutTime
 		fmt.Println("register:FIX got singapore nowStr=", nowStr, " :checkout=", checkOutTime)
 
@@ -314,7 +331,6 @@ func register(w http.ResponseWriter, r *http.Request) {
 		err = PDb.DbwUpdate(RoomStatusEntity, "", rs)
 		if err != nil {
 			log.Println("register: Failed to update room status for room=", room_num[0], " :err=", err)
-			sessDetails := get_sess_details(r, "Registration", "Register page of Pinoy Lodge")
 			sessDetails.Sess.Message = "Failed to read room status: room=" + room_num[0]
 			err = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
@@ -327,6 +343,8 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 func room_hop(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("room_hop:method:", r.Method)
+	sessDetails := get_sess_details(r, "Room Bell Hop", "Bell Hop page of Pinoy Lodge")
+
 	// item size room
 	// for get - prefill fields based on query parameters
 	if r.Method == "GET" {
@@ -346,7 +364,6 @@ func room_hop(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("room_hop:err: %s", err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {
-			sessDetails := get_sess_details(r, "Room Bell Hop", "Bell Hop page of Pinoy Lodge")
 			regData := RegisterData{
 				sessDetails,
 				room,

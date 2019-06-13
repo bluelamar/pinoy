@@ -118,6 +118,12 @@ func staff(w http.ResponseWriter, r *http.Request) {
 
 func add_staff(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("add_staff:method:", r.Method)
+	sessDetails := get_sess_details(r, "Add Employee", "Add Employee page of Pinoy Lodge")
+	if sessDetails.Sess.Role != ROLE_MGR {
+		sessDetails.Sess.Message = "No Permissions"
+		_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		return
+	}
 	// for get - prefill fields based on query parameters
 	if r.Method == "GET" {
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/upd_empl.gtpl", "static/header.gtpl")
@@ -125,7 +131,6 @@ func add_staff(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("add_staff:err: %s", err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {
-			sessDetails := get_sess_details(r, "Add Employee", "Add Employee page of Pinoy Lodge")
 			empData := Employee{
 				"",
 				"",
@@ -150,6 +155,13 @@ func add_staff(w http.ResponseWriter, r *http.Request) {
 
 func upd_staff(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("upd_staff:method:", r.Method)
+	// check session expiration and authorization
+	sessDetails := get_sess_details(r, "Update Employee", "Update Employee page of Pinoy Lodge")
+	if sessDetails.Sess.Role != ROLE_MGR {
+		sessDetails.Sess.Message = "No Permissions"
+		_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		return
+	}
 	// for get - prefill fields based on query parameters
 	if r.Method == "GET" {
 
@@ -225,6 +237,8 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("upd_staff: last=%s first=%s middle=%s salary=%s update=%s\n", lname, fname, mname, salary, update)
 		if id == "" && lname == "" {
 			http.Error(w, "Last name not specified", http.StatusBadRequest)
+			sessDetails.Sess.Message = "Missing user name to make staff update page"
+			SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
 		}
 
@@ -327,7 +341,6 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("upd_staff:err: %s", err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {
-			sessDetails := get_sess_details(r, "Update Employee", "Update Employee page of Pinoy Lodge")
 			empData := Employee{
 				lname,
 				fname,
@@ -350,7 +363,7 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fmt.Println("upd_staff:FIX should be post")
 		r.ParseForm()
-		for k, v := range r.Form {
+		for k, v := range r.Form { // FIX
 			fmt.Println("key:", k)
 			fmt.Println("val:", strings.Join(v, ""))
 		}
@@ -361,7 +374,7 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 		salary := r.Form["salary"][0]
 		name := r.Form["name"][0]
 		role := r.Form["role"][0]
-		log.Println("upd_staff:FIX post got role=", role)
+		fmt.Println("upd_staff:FIX post got role=", role)
 		passwd := r.Form["pwd"][0]
 
 		// determine if new user or existing to be updated
@@ -376,7 +389,7 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 			emap = &emp
 			key = name
 			// http.Error(w, "Failed to apply employee="+name, http.StatusInternalServerError)
-		} else {
+			//} else {
 			/* FIX
 			errMsg, exists := (*entry)["error"]
 			if exists {
@@ -399,17 +412,11 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 		(*emap)["Pwd"] = HashIt(passwd)
 
 		err = PDb.DbwUpdate(StaffEntity, key, emap)
-		/* FIX
-		if rev == "" {
-			_, err = PDb.Create("staff", name, emap)
-		} else {
-			_, err = PDb.Update("staff", name, rev, emap)
-		} */
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		fmt.Printf("upd_staff:FIX: post about to redirect to staff\n")
-		http.Redirect(w, r, "/manager/staff", http.StatusFound)
+		http.Redirect(w, r, "/manager/staff", http.StatusOK)
 	}
 }

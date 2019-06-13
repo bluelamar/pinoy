@@ -8,7 +8,10 @@ import (
 	"net/http"
 )
 
-//"fmt"
+const (
+	ROLE_MGR = "Manager"
+	ROLE_DSK = "Desk"
+)
 
 type PinoySession struct {
 	User      string

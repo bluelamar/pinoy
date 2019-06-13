@@ -78,11 +78,11 @@ func signin(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		fmt.Println("signin: else should be post")
+		fmt.Println("signin:FIX else should be post")
 		r.ParseForm()
 		for k, v := range r.Form {
-			fmt.Println("key:", k)
-			fmt.Println("val:", strings.Join(v, ""))
+			fmt.Println("FIX key:", k)
+			fmt.Println("FIX val:", strings.Join(v, ""))
 		}
 		username := r.Form["user_id"]
 		password := r.Form["user_password"]
@@ -91,7 +91,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("password:", password)
 		// verify user in db and set cookie et al
 		//entity := "staff/" + username[0]
-		entity := "staff"
+		entity := StaffEntity
 		umap, err := PDb.Read(entity, username[0])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -154,19 +154,19 @@ func frontpage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func TimeNow() string {
+func TimeNow(locale *time.Location) (string, time.Time) {
 	var now time.Time
-	if Locale == nil {
+	if locale == nil {
 		now = time.Now()
 	} else {
 		// TODO use alternative to subtract time from utc
-		now = time.Now().In(Locale)
+		now = time.Now().In(locale)
 	}
 	fmt.Println("timeNow:FIX got singapore now=", now)
 	nowStr := fmt.Sprintf("%d-%02d-%02d %02d:%02d",
 		now.Year(), now.Month(), now.Day(),
 		now.Hour(), now.Minute())
-	return nowStr
+	return nowStr, now
 }
 
 func main() {
@@ -183,7 +183,8 @@ func main() {
 
 	loc, err := time.LoadLocation("Singapore")
 	if err != nil {
-		log.Println("main: Failed to load singapore time location: Using default time: err=", err)
+		log.Println("main:WARN: Failed to load singapore time location: Use default locale: +0800 UTC-8: err=", err)
+		Locale = time.FixedZone("UTC-8", 8*60*60)
 	} else {
 		Locale = loc
 	}

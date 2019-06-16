@@ -57,7 +57,7 @@ func rooms(w http.ResponseWriter, r *http.Request) {
 			nbs, err := strconv.Atoi(val["NumBeds"].(string))
 			if err != nil {
 				log.Println("rooms: Failed to comvert num rooms: err=", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, err.Error(), http.StatusInternalServerError) // FIX replace with SendErrorPage
 				return
 			}
 			rrd := RoomDetails{
@@ -76,15 +76,14 @@ func rooms(w http.ResponseWriter, r *http.Request) {
 		err = t.Execute(w, &tblData)
 		if err != nil {
 			fmt.Println("room_rates: err=", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX replace with SendErrorPage
 		}
 	}
 }
 
 func upd_room(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("upd_room:method:", r.Method)
-	// item size room
-	// for get - prefill fields based on query parameters
+	fmt.Println("upd_room:FIX: method:", r.Method)
+	// FIX put auth check for manager and desk
 	if r.Method == "GET" {
 
 		room := ""
@@ -108,7 +107,7 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 			deleteRoom = true
 		}
 
-		fmt.Printf("upd_room: room=%s update=%s\n", room, update)
+		fmt.Printf("upd_room:FIX: room=%s update=%s\n", room, update)
 		var rMap *map[string]interface{}
 		if len(room) > 1 {
 			var err error
@@ -120,16 +119,12 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if deleteRoom {
-			// delete specified room - error if room is not set
 			if room == "" {
 				http.Error(w, "FIX: Room number not specified", http.StatusBadRequest)
 				return
 			}
 			fmt.Printf("upd_room: delete room=%s\n", room)
-			/* FIX
-			id := (*rMap)["_id"].(string)
-			rev := (*rMap)["_rev"].(string)
-			err := PDb.Delete(RoomsEntity, id, rev) */
+
 			err := PDb.DbwDelete(RoomsEntity, rMap)
 			if err != nil {
 				sessDetails := get_sess_details(r, "Update Room", "Update Room page of Pinoy Lodge")
@@ -202,7 +197,7 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
 		}
 	} else {
-		fmt.Println("upd_room: should be post")
+		fmt.Println("upd_room:FIX should be post")
 		r.ParseForm()
 		for k, v := range r.Form {
 			fmt.Println("key:", k)
@@ -288,7 +283,7 @@ func upd_room(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Printf("upd_room: post about to redirect to rooms\n")
+		fmt.Printf("upd_room:FIX post about to redirect to rooms\n")
 		http.Redirect(w, r, "/manager/rooms", http.StatusFound)
 	}
 }

@@ -33,7 +33,12 @@ type UpdateEmployee struct {
 
 func staff(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("staff:method:", r.Method)
-
+	sessDetails := get_sess_details(r, "Staff", "Staff page to Pinoy Lodge")
+	if sessDetails.Sess.Role != ROLE_MGR {
+		sessDetails.Sess.Message = "No Permissions"
+		_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		return
+	}
 	if r.Method != "GET" {
 		fmt.Printf("staff: bad http method: should only be a GET\n")
 		http.Error(w, "Bad request", http.StatusBadRequest)
@@ -45,7 +50,6 @@ func staff(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("staff: err: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
-		sessDetails := get_sess_details(r, "Staff", "Staff page to Pinoy Lodge")
 
 		resArray, err := PDb.ReadAll(StaffEntity)
 		if err != nil {
@@ -90,6 +94,10 @@ func staff(w http.ResponseWriter, r *http.Request) {
 			if exists && name != nil {
 				role = name.(string)
 			}
+			if last == "" || id == "" {
+				// ignore this record
+				continue
+			}
 			emps[k] = Employee{
 				Last:   last,
 				First:  first,
@@ -99,10 +107,6 @@ func staff(w http.ResponseWriter, r *http.Request) {
 				Name:   id,
 			}
 		}
-
-		//emps := make([]Employee, 2)
-		//emps[0] = a1
-		//emps[1] = a2
 
 		tblData := EmpTable{
 			sessDetails,
@@ -154,7 +158,7 @@ func add_staff(w http.ResponseWriter, r *http.Request) {
 }
 
 func upd_staff(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("upd_staff:method:", r.Method)
+	fmt.Println("upd_staff:FIX: method:", r.Method)
 	// check session expiration and authorization
 	sessDetails := get_sess_details(r, "Update Employee", "Update Employee page of Pinoy Lodge")
 	if sessDetails.Sess.Role != ROLE_MGR {
@@ -299,7 +303,7 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 			entry, err = PDb.Read(StaffEntity, id)
 			if err != nil {
 				log.Println("upd_staff: No staff with name=", id)
-				http.Error(w, "No such employee", http.StatusBadRequest)
+				http.Error(w, "No such employee", http.StatusBadRequest) // FIX replace with SendErrorPage
 			}
 			rev = (*entry)["_rev"].(string)
 
@@ -318,14 +322,13 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if id == "" || rev == "" {
-			http.Error(w, "Failed to process user: "+lname, http.StatusBadRequest)
+			http.Error(w, "Failed to process user: "+lname, http.StatusBadRequest) // FIX replace with SendErrorPage
 			return
 		}
 
 		if delete_emp {
 			fmt.Printf("upd_staff: delete employee=%s, %s %s\n", lname, fname, mname)
 
-			// FIX err := PDb.Delete("staff", id, rev)
 			err := PDb.DbwDelete(StaffEntity, entry)
 			if err != nil {
 				http.Error(w, "Failed to delete user: "+lname, http.StatusInternalServerError)
@@ -339,7 +342,7 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/upd_empl.gtpl", "static/header.gtpl")
 		if err != nil {
 			fmt.Printf("upd_staff:err: %s", err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX replace with SendErrorPage
 		} else {
 			empData := Employee{
 				lname,
@@ -357,7 +360,7 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 			err = t.Execute(w, updData)
 			if err != nil {
 				fmt.Println("upd_staff err=", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, err.Error(), http.StatusInternalServerError) // FIX replace with SendErrorPage
 			}
 		}
 	} else {
@@ -380,7 +383,7 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 		// determine if new user or existing to be updated
 		var emap *map[string]interface{}
 		var err error
-		// FIX rev := ""
+
 		key := ""
 		emap, err = PDb.Read(StaffEntity, name)
 		if err != nil {
@@ -388,10 +391,8 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 			emp := make(map[string]interface{})
 			emap = &emp
 			key = name
-			// http.Error(w, "Failed to apply employee="+name, http.StatusInternalServerError)
-			//} else {
 			/* FIX
-			errMsg, exists := (*entry)["error"]
+			errMsg, exists := (*entry)["error"] // TODO check specific error
 			if exists {
 				log.Printf("upd_staff:FIX: create entity=staff id=%s: error=%v\n", name, errMsg)
 			} else {
@@ -401,7 +402,6 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Printf("upd_staff:FIX: last=%s first=%s middle=%s salary=%s\n", lname, fname, mname, salary)
 
-		// FIX emap := make(map[string]interface{})
 		(*emap)["id"] = name
 		(*emap)["name"] = name
 		(*emap)["Last"] = lname
@@ -413,7 +413,7 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 
 		err = PDb.DbwUpdate(StaffEntity, key, emap)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX replace with SendErrorPage
 		}
 
 		fmt.Printf("upd_staff:FIX: post about to redirect to staff\n")

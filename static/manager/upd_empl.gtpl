@@ -17,10 +17,10 @@
   </td></tr>
   <tr><td>Role</td><td>
     <select value="{{.Role}}" id="role" name="role" >
-      {{if eq .Role "Staff"}}
-      <option selected>Staff</option>
+      {{if eq .Role "BellHop"}}
+      <option selected>BellHop</option>
       {{else}}
-      <option value="Staff">Staff</option>
+      <option value="BellHop">BellHop</option>
       {{end}}
       {{if eq .Role "Desk"}}
       <option selected>Desk</option>

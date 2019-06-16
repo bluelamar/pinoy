@@ -3,8 +3,15 @@
 <h1>Room Bell Hop</h1>
 
 {{if and .Sess .Sess.User}}
-<p><h2>Hello {{.Sess.User}}</h2></p>
-<p><h3>{{.Sess.Role}} Page</h3></p>
+<p><h3>{{.Sess.User}} : {{.Sess.Role}} Page</h3></p>
+
+{{if eq .Repeat "false"}}
+<p>
+<div class="specialmsg">
+Invalid PIN was specified, please try again:
+</div>
+</p>
+{{end}}
 
 <p>Bell Hop</p>
   <form action="/desk/room_hop" method="post">
@@ -15,11 +22,17 @@
     </td>
     </tr>
     <tr>
+    <td>Checkin Time</td><td>
+    <input required placeholder="Checkin Time" label="false" value="{{.CheckinTime}}" name="citime" id="citime" />
+    </td>
+    </tr>
+    <tr>
     <td>Bell Hop PIN</td><td>
     <input required type="password" placeholder="PIN" label="false" spellcheck="false" class="is-sensitive"  value="" name="bell_hop_pin" id="bell_hop_pin" />
     </td>
-    </tr>
+    </tr
     </table>
+    <input type="hidden" id="repeat" name="repeat" value="{{.Repeat}}">
     <input type="submit" name="commit" value="Submit" />
   </form>
 

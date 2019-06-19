@@ -34,6 +34,9 @@ func signout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// update the employee report record
+	UpdateEmployeeHours(session.Values["user"].(string), false, sess_attrs(r))
+
 	session.Options.MaxAge = -1
 	session.Values["authenticated"] = false
 	session.Values["user"] = nil
@@ -48,10 +51,10 @@ func signout(w http.ResponseWriter, r *http.Request) {
 }
 
 func signin(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("signin:method:", r.Method)
+	fmt.Println("signin:FIX:method:", r.Method)
 	if r.Method == "GET" {
 
-		fmt.Println("login:get: parse tmpls login and header")
+		fmt.Println("login:FIX:get: parse tmpls login and header")
 		t, err := template.ParseFiles("static/login.gtpl", "static/header.gtpl")
 		if err != nil {
 			fmt.Printf("signin:err: %s", err.Error())
@@ -69,7 +72,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 				sess,
 				pageContent,
 			}
-			fmt.Println("signin:get: exec login")
+			fmt.Println("signin:FIX:get: exec login")
 			err = t.Execute(w, loginPage)
 			if err != nil {
 				fmt.Printf("signin:exec:err: %s", err.Error())
@@ -89,8 +92,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		// logic part of log in
 		fmt.Println("username:", username)
 		fmt.Println("password:", password)
-		// verify user in db and set cookie et al
-		//entity := "staff/" + username[0]
+		// verify user in db and set cookie et al]
 		entity := StaffEntity
 		umap, err := PDb.Read(entity, username[0])
 		if err != nil {
@@ -102,7 +104,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 
 		passwd, ok := (*umap)["Pwd"]
 		if !ok {
-			http.Error(w, "Not authorized", http.StatusInternalServerError)
+			http.Error(w, "Not authorized", http.StatusInternalServerError) // FIX
 			return
 		}
 		// use hash only for user password
@@ -110,7 +112,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 
 		log.Println("signin:FIX db.pwd=", passwd, " form.pwd=", password[0], " hash=", pwd)
 		if passwd != pwd {
-			http.Error(w, "Not authorized", http.StatusUnauthorized)
+			http.Error(w, "Not authorized", http.StatusUnauthorized) // FIX
 			return
 		}
 
@@ -130,11 +132,14 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		session.Values["role"] = role // "Manager" "desk" "staff"
 		session.Save(r, w)
 
-		fmt.Printf("signin: post about to redirect to frontpage: auth=%t\n", session.Values["authenticated"].(bool))
+		// update the employee report record - dont wait for it
+		go UpdateEmployeeHours(username[0], true, sess_attrs(r))
+
+		fmt.Printf("signin:FIX: post about to redirect to frontpage: auth=%t\n", session.Values["authenticated"].(bool))
 		http.Redirect(w, r, "/frontpage", http.StatusFound)
 	}
 
-	fmt.Printf("signin:method=%s DONE", r.Method)
+	fmt.Printf("signin:method=%s DONE\n", r.Method)
 }
 
 func frontpage(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +162,10 @@ func frontpage(w http.ResponseWriter, r *http.Request) {
 func TimeNow(locale *time.Location) (string, time.Time) {
 	var now time.Time
 	if locale == nil {
-		now = time.Now()
+		secondsEastOfUTC := int((8 * time.Hour).Seconds())
+
+		maynila := time.FixedZone("Maynila Time", secondsEastOfUTC)
+		now = time.Now().In(maynila)
 	} else {
 		// TODO use alternative to subtract time from utc
 		now = time.Now().In(locale)
@@ -184,7 +192,9 @@ func main() {
 	loc, err := time.LoadLocation("Singapore")
 	if err != nil {
 		log.Println("main:WARN: Failed to load singapore time location: Use default locale: +0800 UTC-8: err=", err)
-		Locale = time.FixedZone("UTC-8", 8*60*60)
+		//Locale = time.FixedZone("UTC-8", 8*60*60)
+		secondsEastOfUTC := int((8 * time.Hour).Seconds())
+		Locale = time.FixedZone("Maynila Time", secondsEastOfUTC)
 	} else {
 		Locale = loc
 	}

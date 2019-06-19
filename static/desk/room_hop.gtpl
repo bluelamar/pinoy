@@ -30,7 +30,7 @@ Invalid PIN was specified, please try again:
     <td>Bell Hop PIN</td><td>
     <input required type="password" placeholder="PIN" label="false" spellcheck="false" class="is-sensitive"  value="" name="bell_hop_pin" id="bell_hop_pin" />
     </td>
-    </tr
+    </tr>
     </table>
     <input type="hidden" id="repeat" name="repeat" value="{{.Repeat}}">
     <input type="submit" name="commit" value="Submit" />

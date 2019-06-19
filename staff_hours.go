@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -20,7 +21,7 @@ type EmpHours struct {
 	LastClockoutTime string
 	ExpectedHours    int // hours expected to work on the shift when clocks in
 	// -- default per Role? desk=12, etc
-	TotalHours int // gets updated when employee clocks out
+	TotalHours float64 // gets updated when employee clocks out
 }
 type EmpHoursTable struct {
 	*SessionDetails
@@ -91,10 +92,10 @@ func report_staff_hours(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			totHours := 0
+			totHours := float64(0)
 			name, exists = vm["TotalHours"]
 			if exists {
-				if num, err := strconv.Atoi(name.(string)); err == nil {
+				if num, err := strconv.ParseFloat(name.(string), 64); err == nil {
 					totHours = num
 				}
 			}
@@ -145,25 +146,15 @@ func update_staff_hours(w http.ResponseWriter, r *http.Request) {
 
 		if userid == "" {
 			log.Println("update_staff_hours: Missing required usersid=", userid)
-			sessDetails := get_sess_details(r, "Update Employee Hours", "Update Employee Hours page of Pinoy Lodge")
+			//sessDetails := get_sess_details(r, "Update Employee Hours", "Update Employee Hours page of Pinoy Lodge")
 			sessDetails.Sess.Message = "Failed to update hours for user: " + userid
 			_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusNotFound)
 			return
 		}
 
-		citime := ""
-		if cis, ok := r.URL.Query()["checkin"]; !ok || len(cis[0]) < 1 {
-			log.Println("update_staff_hours: Url Param 'checkin' is missing")
-		} else {
-			citime = cis[0]
-		}
-
-		cotime := ""
-		if cos, ok := r.URL.Query()["checkout"]; !ok || len(cos[0]) < 1 {
-			log.Println("update_staff_hours: Url Param 'checkout' is missing")
-		} else {
-			cotime = cos[0]
-		}
+		// handle clockin or clockout requests
+		// if the clockin is requested, and TotalHours == 0 and LastClockoutTime != ''
+		// then set TotalHours to ExpectedHours
 
 		update := ""
 		if updates, ok := r.URL.Query()["update"]; !ok || len(updates[0]) < 1 {
@@ -172,19 +163,30 @@ func update_staff_hours(w http.ResponseWriter, r *http.Request) {
 			update = updates[0]
 		}
 
+		clockIn := true
 		deleteStaffHours := false
 		if update == "delete" {
 			deleteStaffHours = true
+		} else if update == "clockout" {
+			clockIn = false
 		}
 
 		fmt.Printf("update_staff_hours:FIX: user=%s update=%s\n", userid, update)
+
+		if !deleteStaffHours {
+			if err := UpdateEmployeeHours(userid, clockIn, sessDetails.Sess); err != nil {
+				log.Println("update_staff_hours: Failed to update hours for userid=", userid, " :err=", err)
+				sessDetails.Sess.Message = "Failed to update hours for user: " + userid
+				_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusNotModified)
+			}
+			return
+		}
 
 		var err error
 		var rMap *map[string]interface{}
 		rMap, err = PDb.Read(StaffHoursEntity, userid)
 		if err != nil {
 			log.Println("update_staff_hours: No staff with name=", userid)
-			sessDetails := get_sess_details(r, "Update Employee Hours", "Update Employee Hours page of Pinoy Lodge")
 			sessDetails.Sess.Message = "Failed to update hours for user: " + userid
 			_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusNotFound)
 			return
@@ -199,89 +201,12 @@ func update_staff_hours(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			err := PDb.DbwDelete(StaffHoursEntity, rMap)
-			if err != nil {
-				sessDetails := get_sess_details(r, "UpdateEmployee Hours", "Update Employee Hours page of Pinoy Lodge")
+			if err := PDb.DbwDelete(StaffHoursEntity, rMap); err != nil {
+				//sessDetails := get_sess_details(r, "UpdateEmployee Hours", "Update Employee Hours page of Pinoy Lodge")
 				sessDetails.Sess.Message = "Failed to delete user hours data: " + userid
 				_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusConflict)
-			} else {
-				http.Redirect(w, r, "/desk/update_staff_hours", http.StatusOK)
 			}
-			return
 		}
-
-		// FIX TODO check if userid is Role == ROLE_DSK - can only update themself and BellHops
-		// they cannot update other desk or manager role users
-		if sessDetails.Sess.Role == ROLE_DSK && sessDetails.Sess.User != userid {
-			// FIX read user staff record to get their role
-			fmt.Println("update_staff_hours:FIX role is desk: check that userid role is bellhop")
-		}
-
-		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/upd_emp_hours.gtpl", "static/header.gtpl")
-		if err != nil {
-			log.Println("update_staff_hours: err=", err.Error())
-			sessDetails.Sess.Message = "Failed to Update employee hours: " + userid
-			err = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
-			return
-		}
-
-		var empData EmpHours
-		fmt.Printf("update_staff_hours: r-map=%v\n", (*rMap))
-
-		expHours, err := strconv.Atoi((*rMap)["ExpectedHours"].(string))
-		if err != nil {
-			log.Println("update_staff_hours: Failed to convert expected hours: err=", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
-			return
-		}
-		totHours, err := strconv.Atoi((*rMap)["TotalHours"].(string))
-		if err != nil {
-			log.Println("update_staff_hours: Failed to convert total hours: err=", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
-			return
-		}
-
-		if citime == "" {
-			citime = (*rMap)["LastClockinTime"].(string)
-		}
-		if cotime == "" {
-			cotime = (*rMap)["LastClockoutTime"].(string)
-		} else {
-			// user clocked out so update total hours
-			// FIX subtract cotime from citime and add that diff to totHours
-			// ex checkinTime: 2019-06-11 12:49
-			TODO
-			ci := strings.Split(citime, " ")
-			date, hourMin := ci[0], ci[1]
-			dateSlice := strings.Split(date, "-")
-			hm := strings.Split(hourMin, ":")
-			hourStr := hm[0]
-			min := hm[1]
-			hourNum, err := strconv.Atoi(hourStr)
-			if err != nil {
-				return "", err
-			}
-			start := time.Date(2009, 1, 1, 12, 0, 0, 0, time.UTC)
-		}
-		empData = EmpHours{
-			UserID:           (*rMap)["UserID"].(string),
-			LastClockinTime:  citime,
-			LastClockoutTime: (*rMap)["LastClockoutTime"].(string),
-			ExpectedHours:    expHours, // FIX (*rMap)["ExpectedHours"].(int), // hours expected to work on the shift when clocks in
-			// -- default per Role? desk=12, etc
-			TotalHours: totHours, // FIX (*rMap)["TotalHours"].(int),
-		}
-
-		updData := UpdateEmpHours{
-			sessDetails,
-			empData,
-		}
-		err = t.Execute(w, updData)
-		if err != nil {
-			log.Println("update_staff_hours: err=", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
-		}
-		return
 	} else {
 		fmt.Println("update_staff_hours:FIX should be post")
 		r.ParseForm()
@@ -290,7 +215,87 @@ func update_staff_hours(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("val:", strings.Join(v, ""))
 		}
 		// FIX TODO get the form parameters
+
+		//err = UpdateEmployeeHours(userid string, clockin bool, session *PinoySession)
 	}
 	fmt.Printf("update_staff_hours:FIX post about to redirect to rooms\n")
-	http.Redirect(w, r, "/frontpage", http.StatusOK)
+	http.Redirect(w, r, "/static/frontpage", http.StatusOK)
+}
+
+func UpdateEmployeeHours(userid string, clockin bool, session *PinoySession) error {
+
+	var err error
+	var rMap *map[string]interface{}
+	rMap, err = PDb.Read(StaffEntity, userid)
+	// check if userid is Role == ROLE_DSK - can only update themself and Hoppers
+	// they cannot update other desk or manager role users
+	if session.Role == ROLE_DSK && session.User != userid {
+		fmt.Println("update_staff_hours:FIX role is desk: check that userid role is bellhop")
+		rMap, err = PDb.Read(StaffEntity, userid)
+		if err != nil {
+			log.Println("UpdateEmployeeHours: No staff with name=", userid, " :err=", err)
+			return err
+		}
+		role := ""
+		name, exists := (*rMap)["Role"]
+		if exists && name != nil {
+			role = name.(string)
+		}
+		if role != ROLE_HOP {
+			msg := "Not allowed to update hours for user: " + userid
+			log.Println("UpdateEmployeeHours: ", msg, userid)
+			return errors.New(msg)
+		}
+	}
+
+	// get hours record
+	key := ""
+	rMap, err = PDb.Read(StaffHoursEntity, userid)
+	if err != nil {
+		log.Println("UpdateEmployeeHours: No staff hours for user=", userid, " :err=", err)
+		// create a new record
+
+		rm := map[string]interface{}{"UserID": userid,
+			"LastClockinTime":  "",
+			"LastClockoutTime": "",
+			"ExpectedHours":    12, // hours expected to work on the shift when clocks in
+			// -- default per Role? desk=12, etc
+			"TotalHours": 0,
+		}
+		rMap = &rm
+		key = userid
+	}
+
+	nowStr, nowTime := TimeNow(Locale)
+	if clockin {
+		// reset the LastClockinTime
+		(*rMap)["LastClockinTime"] = nowStr
+		// if the clockin is requested, and TotalHours == 0 and LastClockoutTime != ''
+		// then set TotalHours to ExpectedHours
+
+	} else {
+		(*rMap)["LastClockoutTime"] = nowStr
+		// clocked out so recalc the hours
+		// create Time from the LastClockinTime
+		// subtract clockouttime from LastClockinTime
+		const longForm = "2006-01-02 15:04"
+		// ex clockinTime: 2019-06-11 12:49
+		clockinTime, err := time.ParseInLocation(longForm, (*rMap)["LastClockinTime"].(string), Locale)
+		if err != nil {
+			log.Println("UpdateEmployeeHours: Failed to calc clockin time for userid=", userid, " :err=", err)
+			return err
+		}
+		dur := nowTime.Sub(clockinTime)
+		hours := dur.Hours() // float64: add this to TotalHours
+		total := hours + (*rMap)["TotalHours"].(float64)
+		(*rMap)["TotalHours"] = total
+	}
+
+	err = PDb.DbwUpdate(StaffHoursEntity, key, rMap)
+	if err != nil {
+		log.Println("UpdateEmployeeHours: Failed to update db for total hours for userid=", userid, " :err=", err)
+		return err
+	}
+
+	return nil
 }

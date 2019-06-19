@@ -3,6 +3,7 @@ package main
 import (
 
 	//"fmt"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -197,6 +198,20 @@ func TestCreate(t *testing.T) {
 	} else {
 		t.Logf("role == Desk is correct\n")
 	}
+
+	const longForm = "2006-01-02 15:04" // FIX :05"
+	// ex clockinTime: 2019-06-11 12:49
+	ci := "2019-06-11 12:49"
+	clockin, err := time.ParseInLocation(longForm, ci, loc)
+	if err != nil {
+		t.Logf("ParseInLoc failed :err=%v\n", err)
+	} else {
+		t.Logf("ParseInLoc works: time=%v\n", clockin)
+	}
+	h, _ := time.ParseDuration("4h30m")
+	hours := h.Hours()
+	ihours := int(hours)
+	fmt.Printf("Ive got %.1f hours of work left or rounded=%d\n", hours, ihours)
 }
 
 func TestEncrypt(t *testing.T) {

@@ -58,9 +58,9 @@ func staff(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Println("FIX staff: res=", resArray)
 
-		emps := make([]Employee, len(resArray))
+		emps := make([]Employee, 0)
 
-		for k, v := range resArray {
+		for _, v := range resArray {
 			vm := v.(map[string]interface{})
 			log.Println("FIX staff: emp=", vm)
 			id := ""
@@ -98,7 +98,8 @@ func staff(w http.ResponseWriter, r *http.Request) {
 				// ignore this record
 				continue
 			}
-			emps[k] = Employee{
+			// FIX emps[k] = Employee{
+			emp := Employee{
 				Last:   last,
 				First:  first,
 				Middle: middle,
@@ -106,6 +107,7 @@ func staff(w http.ResponseWriter, r *http.Request) {
 				Role:   role,
 				Name:   id,
 			}
+			emps = append(emps, emp)
 		}
 
 		tblData := EmpTable{

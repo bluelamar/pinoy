@@ -98,7 +98,7 @@ func staff(w http.ResponseWriter, r *http.Request) {
 				// ignore this record
 				continue
 			}
-			// FIX emps[k] = Employee{
+
 			emp := Employee{
 				Last:   last,
 				First:  first,

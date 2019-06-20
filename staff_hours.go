@@ -36,7 +36,7 @@ type UpdateEmpHours struct {
 func report_staff_hours(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("report_staff_hours:FIX method:", r.Method)
 	sessDetails := get_sess_details(r, "Staff Hours", "Staff Hours page to Pinoy Lodge")
-	if sessDetails.Sess.Role != ROLE_MGR {
+	if sessDetails.Sess.Role != ROLE_MGR && sessDetails.Sess.Role != ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
@@ -60,9 +60,9 @@ func report_staff_hours(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Println("FIX report_staff_hours: res=", resArray)
 
-		emps := make([]EmpHours, len(resArray))
-
-		for k, v := range resArray {
+		emps := make([]EmpHours, 0) // FIX len(resArray))
+		deskRole := sessDetails.Sess.Role == ROLE_DSK
+		for _, v := range resArray {
 			vm := v.(map[string]interface{})
 			fmt.Println("FIX report_staff_hours: emp=", vm)
 			id := ""
@@ -71,46 +71,58 @@ func report_staff_hours(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			id = name.(string)
+			if id == "" {
+				// ignore this record
+				continue
+			}
+
+			if deskRole {
+				// only show the hoppers
+				entity, err := PDb.Read(StaffEntity, id)
+				if err != nil {
+					log.Println("report_staff_hours: desk role: failed to read user=", id, " :err=", err)
+					continue
+				}
+
+				if role, exists := (*entity)["Role"]; exists {
+					if role.(string) != ROLE_HOP {
+						continue // Desk can only update hours for bell hops
+					}
+				}
+			}
 
 			clockin := ""
-			name, exists = vm["LastClockinTime"]
-			if exists {
+			if name, exists = vm["LastClockinTime"]; exists {
 				clockin = name.(string)
 			}
 
 			clockout := ""
-			name, exists = vm["LastClockoutTime"]
-			if exists {
+			if name, exists = vm["LastClockoutTime"]; exists {
 				clockout = name.(string)
 			}
 
 			expHours := 0
-			name, exists = vm["ExpectedHours"]
-			if exists {
+			if name, exists = vm["ExpectedHours"]; exists {
 				if num, err := strconv.Atoi(name.(string)); err == nil {
 					expHours = num
 				}
 			}
 
 			totHours := float64(0)
-			name, exists = vm["TotalHours"]
-			if exists {
+			if name, exists = vm["TotalHours"]; exists {
 				if num, err := strconv.ParseFloat(name.(string), 64); err == nil {
 					totHours = num
 				}
 			}
 
-			if id == "" {
-				// ignore this record
-				continue
-			}
-			emps[k] = EmpHours{
+			emp := EmpHours{
 				UserID:           id,
 				LastClockinTime:  clockin,
 				LastClockoutTime: clockout,
 				ExpectedHours:    expHours,
 				TotalHours:       totHours,
 			}
+			emps = append(emps, emp)
 		}
 
 		tblData := EmpHoursTable{
@@ -277,7 +289,6 @@ func UpdateEmployeeHours(userid string, clockin bool, session *PinoySession) err
 		(*rMap)["LastClockoutTime"] = nowStr
 		// clocked out so recalc the hours
 		// create Time from the LastClockinTime
-		// subtract clockouttime from LastClockinTime
 		const longForm = "2006-01-02 15:04"
 		// ex clockinTime: 2019-06-11 12:49
 		clockinTime, err := time.ParseInLocation(longForm, (*rMap)["LastClockinTime"].(string), Locale)
@@ -285,8 +296,8 @@ func UpdateEmployeeHours(userid string, clockin bool, session *PinoySession) err
 			log.Println("UpdateEmployeeHours: Failed to calc clockin time for userid=", userid, " :err=", err)
 			return err
 		}
-		dur := nowTime.Sub(clockinTime)
-		hours := dur.Hours() // float64: add this to TotalHours
+		dur := nowTime.Sub(clockinTime) // subtract clockouttime from LastClockinTime
+		hours := dur.Hours()            // float64: add this to TotalHours
 		total := hours + (*rMap)["TotalHours"].(float64)
 		(*rMap)["TotalHours"] = total
 	}

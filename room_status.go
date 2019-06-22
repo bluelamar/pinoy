@@ -74,19 +74,45 @@ func room_status(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Println("room_status:FIX: got=", roomStati)
 
-		rtbl := make([]RoomState, len(roomStati))
-		for k, v := range roomStati {
-			fmt.Println("room_status:FIX k=", k, " :v=", v)
+		rtbl := make([]RoomState, 0)
+		for _, v := range roomStati {
+			fmt.Println("room_status:FIX :v=", v)
 			val := v.(map[string]interface{})
-			rs := RoomState{
-				RoomNum:      val["RoomNum"].(string),
-				Status:       val["Status"].(string),
-				GuestInfo:    val["GuestInfo"].(string),
-				CheckinTime:  val["CheckinTime"].(string),
-				CheckoutTime: val["CheckoutTime"].(string),
-				Rate:         val["Rate"].(string),
+			rn := ""
+			if str, exists := val["RoomNum"]; exists {
+				rn = str.(string)
+			} else {
+				continue
 			}
-			rtbl[k] = rs
+			st := ""
+			if str, exists := val["Status"]; exists {
+				st = str.(string)
+			}
+			gi := ""
+			if str, exists := val["GuestInfo"]; exists {
+				gi = str.(string)
+			}
+			ci := ""
+			if str, exists := val["CheckinTime"]; exists {
+				ci = str.(string)
+			}
+			co := ""
+			if str, exists := val["CheckoutTime"]; exists {
+				co = str.(string)
+			}
+			rt := ""
+			if str, exists := val["Rate"]; exists {
+				rt = str.(string)
+			}
+			rs := RoomState{
+				RoomNum:      rn,
+				Status:       st,
+				GuestInfo:    gi,
+				CheckinTime:  ci,
+				CheckoutTime: co,
+				Rate:         rt,
+			}
+			rtbl = append(rtbl, rs)
 		}
 
 		sessDetails := get_sess_details(r, "Room status", "Room status page to Pinoy Lodge")

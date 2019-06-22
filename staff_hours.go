@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -47,7 +46,7 @@ func report_staff_hours(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/staff_hours.gtpl", "static/header.gtpl")
+	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/staff_hours.gtpl", "static/header.gtpl")
 	if err != nil {
 		fmt.Printf("report_staff_hours: err: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -66,7 +65,7 @@ func report_staff_hours(w http.ResponseWriter, r *http.Request) {
 			vm := v.(map[string]interface{})
 			fmt.Println("FIX report_staff_hours: emp=", vm)
 			id := ""
-			name, exists := vm["name"]
+			name, exists := vm["UserID"]
 			if !exists {
 				continue
 			}
@@ -102,17 +101,13 @@ func report_staff_hours(w http.ResponseWriter, r *http.Request) {
 			}
 
 			expHours := 0
-			if name, exists = vm["ExpectedHours"]; exists {
-				if num, err := strconv.Atoi(name.(string)); err == nil {
-					expHours = num
-				}
+			if num, exists := vm["ExpectedHours"]; exists {
+				expHours = int(num.(float64))
 			}
 
 			totHours := float64(0)
-			if name, exists = vm["TotalHours"]; exists {
-				if num, err := strconv.ParseFloat(name.(string), 64); err == nil {
-					totHours = num
-				}
+			if num, exists := vm["TotalHours"]; exists {
+				totHours = num.(float64)
 			}
 
 			emp := EmpHours{

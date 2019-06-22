@@ -11,7 +11,7 @@ import (
 const (
 	ROLE_MGR = "Manager"
 	ROLE_DSK = "Desk"
-	ROLE_HOP = "Hopper"
+	ROLE_HOP = "BellHop"
 )
 
 type PinoySession struct {

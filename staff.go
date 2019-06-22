@@ -54,7 +54,7 @@ func staff(w http.ResponseWriter, r *http.Request) {
 		resArray, err := PDb.ReadAll(StaffEntity)
 		if err != nil {
 			log.Println(`staff: db readall error`, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX TODO
 		}
 		log.Println("FIX staff: res=", resArray)
 
@@ -251,7 +251,7 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 		var entry *map[string]interface{}
 		rev := ""
 		if id == "" {
-			elist, err := PDb.Find("staff", "Last", lname)
+			elist, err := PDb.Find(StaffEntity, "Last", lname)
 			if err != nil {
 				log.Println("upd_staff: No staff with last name=", lname)
 				http.Error(w, "No such employee", http.StatusBadRequest)
@@ -419,6 +419,6 @@ func upd_staff(w http.ResponseWriter, r *http.Request) {
 		}
 
 		fmt.Printf("upd_staff:FIX: post about to redirect to staff\n")
-		http.Redirect(w, r, "/manager/staff", http.StatusOK)
+		http.Redirect(w, r, "/manager/staff", http.StatusFound)
 	}
 }

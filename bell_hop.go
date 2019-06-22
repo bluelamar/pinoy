@@ -30,6 +30,7 @@ type HopperTable struct {
 	*SessionDetails
 	RoomNum     string
 	CheckinTime string
+	Hoppers     []string
 	Repeat      string
 }
 
@@ -78,7 +79,39 @@ func room_hop(w http.ResponseWriter, r *http.Request) {
 		} else {
 			repeat = repeats[0]
 		}
-		fmt.Printf("room_hop: room=%s checkin=%s repeat=%s\n", room, citime, repeat)
+
+		// FIX TODO read the scheduled hop shift - ReadAll HopShiftEntity
+		// - if no hops returned, Find hop staff
+		// make list of hop names
+		hlist, err := PDb.ReadAll(HopShiftEntity)
+		if err != nil {
+			log.Println("room_hop: Failed to read the hop shift entries :err=", err)
+			//  FIX TODO
+		}
+		if len(hlist) == 0 {
+			// do a Find of staff that are Role == ROLE_HOP
+			if list, err := PDb.Find(StaffEntity, "Role", ROLE_HOP); err == nil {
+				hlist = list
+			} else {
+				http.Error(w, "No bell hops", http.StatusInternalServerError) // FIX TODO
+			}
+		}
+
+		fmt.Printf("room_hop: room=%s checkin=%s repeat=%s hopper-list=%v\n", room, citime, repeat, hlist)
+		hoppers := make([]string, 0)
+
+		for _, v := range hlist {
+			vm := v.(map[string]interface{})
+			log.Println("FIX room_hop: emp=", vm)
+			id := ""
+			if name, exists := vm["name"]; exists {
+				id = name.(string)
+			} else {
+				continue
+			}
+
+			hoppers = append(hoppers, id)
+		}
 
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/room_hop.gtpl", "static/header.gtpl")
 		if err != nil {
@@ -89,6 +122,7 @@ func room_hop(w http.ResponseWriter, r *http.Request) {
 				sessDetails,
 				room,
 				citime,
+				hoppers,
 				repeat,
 			}
 			err = t.Execute(w, regData)
@@ -105,10 +139,13 @@ func room_hop(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("val:", strings.Join(v, ""))
 		}
 
+		hopper := r.Form["hopper"]
 		bell_hop_pin := r.Form["bell_hop_pin"]
 		room_num := r.Form["room_num"]
 		citime := r.Form["citime"]
 		repeat := r.Form["repeat"] // if true then can repeat upon failure
+
+		// FIX TODO check if hop is clocked in, if not, clock them in and show warning
 
 		// FIX TODO read the scheduled hop shift - ReadAll HopShiftEntity
 		// - if no hops returned, redirect to update_shift with all the above params
@@ -128,7 +165,7 @@ func room_hop(w http.ResponseWriter, r *http.Request) {
 		- success login : LoginValid = true or false
 		- key= UserID + ":" + Room + ":" + TimeStamp
 		*/
-		fmt.Printf("room_hop: bell-hop-pin=%s room-num=%s citime=%s repeat=%s\n", bell_hop_pin, room_num, citime, repeat)
+		fmt.Printf("room_hop: hopper=%s bell-hop-pin=%s room-num=%s citime=%s repeat=%s\n", hopper, bell_hop_pin, room_num, citime, repeat)
 
 		fmt.Printf("room_hop: post about to redirect to room_status\n")
 		http.Redirect(w, r, "/desk/room_status", http.StatusFound)

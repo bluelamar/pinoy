@@ -44,5 +44,8 @@ curl -v -H "Content-Type: application/json" --cookie "cdbcookies" http://localho
 INDEX='{"index":{"fields":[{"Last":"desc"}]}}'
 curl -v -H "Content-Type: application/json" --cookie "cdbcookies" http://localhost:5984/staff/_index -X POST -d $INDEX
 
+INDEX='{"index":{"fields":[{"Role":"desc"}]}}'
+curl -v -H "Content-Type: application/json" --cookie "cdbcookies" http://localhost:5984/staff/_index -X POST -d $INDEX
+
 # find: res= map[docs:[map[Rate:Large Room RoomNum:16 Status:open _id:16 _rev:1-0450a844bcc9679a730910143e15946c CheckinTime: GuestInfo:] map[Status:open _id:17 _rev:1-a265ca63e36e11a4e5a7ab72304c6d49 CheckinTime: GuestInfo: Rate:Medium Room RoomNum:17] map[CheckinTime: GuestInfo: Rate:Large Room RoomNum:18 Status:open _id:18 _rev:1-0deb62dafd9602c4140e9405ac029443] map[Rate:Small Room RoomNum:19 Status:open _id:19 _rev:1-b250ac6f9757354fc03b397fad28ec41 CheckinTime: GuestInfo:]] bookmark:g1AAAAA0eJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYkbWoJkOGAyULEsAGSYDY0 warning:no matching index found, create an index to optimize query time]
 

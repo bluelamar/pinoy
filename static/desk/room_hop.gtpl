@@ -27,7 +27,15 @@ Invalid PIN was specified, please try again:
     </td>
     </tr>
     <tr>
-    <td>Bell Hop PIN</td><td>
+    <td>Bell Hop PIN</td>
+    <td>
+    <select id="hopper" name="hopper" >
+    {{range $element := .Hoppers}}
+      <option value="{{$element}}">{{$element}}</option>
+    {{end}}
+    </select>
+    </td>
+    <td>
     <input required type="password" placeholder="PIN" label="false" spellcheck="false" class="is-sensitive"  value="" name="bell_hop_pin" id="bell_hop_pin" />
     </td>
     </tr>

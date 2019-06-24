@@ -1,4 +1,4 @@
-package main
+package room
 
 import (
 
@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/bluelamar/pinoy/config"
+	"github.com/bluelamar/pinoy/database"
+	"github.com/bluelamar/pinoy/misc"
 )
 
-var dbInt *DBInterface
-var cfg *PinoyConfig
+var dbInt database.DBInterface //  DBObj
+var cfg *config.PinoyConfig
 
 func TestNewDB(t *testing.T) {
 	//newDB := "golang-newdb"
@@ -17,13 +21,13 @@ func TestNewDB(t *testing.T) {
 	//defer server.Delete(newDB)
 	//dbNew, err := NewDatabase(fmt.Sprintf("%s/%s", DefaultBaseURL, newDB))
 
-	cfg = &PinoyConfig{
-		DbUrl:   "http://localhost",
-		DbName:  "testxyz",
-		DbPort:  5984,
-		DbUser:  "ruler",
-		DbPwd:   "oneringtorule",
-		Timeout: 5,
+	cfg = &config.PinoyConfig{
+		DbUrl:         "http://localhost",
+		DbName:        "testxyz",
+		DbPort:        5984,
+		DbUser:        "ruler",
+		DbPwd:         "oneringtorule",
+		DbCommTimeout: 5,
 	}
 
 	pwd, err := cfg.EncryptDbPwd()
@@ -33,7 +37,12 @@ func TestNewDB(t *testing.T) {
 		t.Logf("TestNewDb got pwd: %q\n", pwd)
 	}
 
-	dbInt1, err := NewDatabase(cfg)
+	db1 := new(database.CDBInterface)
+	//PDb1 := [...]DBInterface{db1}
+	//PDb = PDb1[0]
+	var dbInt1 database.DBInterface
+	dbInt1 = db1
+	err = database.Init(&dbInt1, cfg)
 	if err != nil {
 		t.Error(`TestNewDb: database error`, err)
 	}
@@ -41,35 +50,40 @@ func TestNewDB(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	doc := map[string]interface{}{"doc": "bar"}
-	doc2, err := dbInt.Create("testxyz", "docbar", doc)
+	entity := "testxyz"
+	doc := map[string]interface{}{"bar": "doc"}
+	doc2, err := dbInt.Create(entity, "bar", doc)
 	if err != nil {
-		t.Error(`db save error`, err)
+		t.Log(`TestCreate: create bar doc: db save error:`, err)
+		doc2, err = dbInt.Read(entity, "bar")
+		if err != nil {
+			t.Error(`TestCreate: Failed to read bar doc: db read error`, err)
+		}
 	}
+	t.Logf("TestCreate: doc2=%v\n", doc2)
 	//id := (*doc2)["_id"].(string)
 	id := ""
-	if id2, ok := (*doc2)["id"]; ok {
+	if id2, ok := (*doc2)["_id"]; ok {
 		id = id2.(string)
-		t.Logf("TestCreate got id: %q\n", id)
+		t.Logf("TestCreate got _id: %q\n", id)
 	} else {
-		t.Errorf("TestCreate: missing id")
+		t.Errorf("TestCreate: missing _id")
 	}
 	rev := ""
-	if rv, ok := (*doc2)["rev"]; ok {
+	if rv, ok := (*doc2)["_rev"]; ok {
 		rev = rv.(string)
-		t.Logf("TestCreate got rev: %q\n", rev)
+		t.Logf("TestCreate got _rev: %q\n", rev)
 	} else {
 		t.Errorf("TestCreate: missing rev")
 	}
 
-	entity := "testxyz"
-	ent_map, err := dbInt.Read(entity, id)
+	ent_map, err := database.Read(dbInt, entity, id)
 	if err != nil {
 		t.Error(`db read error`, err)
 	}
 	t.Logf("read entity=%s id=%s val=%v\n", entity, id, ent_map)
 
-	ent_map, err = dbInt.Read(entity, "nosuchid")
+	ent_map, err = database.Read(dbInt, entity, "nosuchid")
 	if err != nil {
 		t.Logf(`db read nosuchid error=%v\n`, err)
 	} else {
@@ -80,36 +94,37 @@ func TestCreate(t *testing.T) {
 		}
 	}
 
-	resArray, err := dbInt.ReadAll(entity)
+	resArray, err := database.ReadAll(dbInt, entity)
 	if err != nil {
 		t.Error(`db readall error`, err)
 	}
 	t.Logf("readall entity=%s val=%v\n", entity, resArray)
 
-	fres, err := dbInt.Find("room_rates", "RateClass", "Small Room")
+	fres, err := database.Find(dbInt, "room_rates", "RateClass", "Small Room")
 	if err != nil {
 		t.Error(`db find error`, err)
 	}
 	t.Logf("find entity=%s val=%v\n", entity, fres)
 
-	err = dbInt.Delete(entity, id, rev)
+	t.Log("TestCreate: delete doc2=", doc2)
+	err = dbInt.DbwDelete(entity, doc2)
 	if err != nil {
 		t.Error(`db delete error`, err)
 	}
 
-	ent_map, err = dbInt.Read(entity, "3d_shapes")
+	ent_map, err = database.Read(dbInt, entity, "3d_shapes")
 	if err != nil {
 		t.Logf("db read error: %v\n", err)
 	} else {
 		t.Logf("db read 3d_shaps: %v\n", ent_map)
-		rev3, found := (*ent_map)["_rev"].(string)
+		_, found := (*ent_map)["_rev"].(string)
 		if found {
-			dbInt.Delete(entity, "3d_shapes", rev3)
+			dbInt.DbwDelete(entity, ent_map) // FIX "3d_shapes", rev3)
 		}
 	}
 	//doc = map[string]interface{}{"_id": "3d_shapes", "shape": "box"}
 	doc = map[string]interface{}{"shape": "box"}
-	doc2, err = dbInt.Create("testxyz", "3d_shapes", doc)
+	doc2, err = database.Create(dbInt, "testxyz", "3d_shapes", doc)
 	if err != nil {
 		t.Error(`db save error`, err)
 	}
@@ -128,7 +143,7 @@ func TestCreate(t *testing.T) {
 	} else {
 		t.Errorf("TestCreate-2: missing rev")
 	}
-	ent_map, err = dbInt.Read(entity, id)
+	ent_map, err = database.Read(dbInt, entity, (*doc2)["id"].(string)) // FIX id)
 	if err != nil {
 		t.Error(`db read error`, err)
 	}
@@ -137,24 +152,27 @@ func TestCreate(t *testing.T) {
 	var updEntity map[string]interface{}
 	updEntity = *ent_map // .(*map[string]interface{})
 	updEntity["shape"] = "pyramid"
-	rev, err = dbInt.Update(entity, id, rev, updEntity)
+	//rev, err = Update(dbInt.GetDbi(), entity, id, rev, updEntity)
+	err = dbInt.DbwUpdate(entity, "pyramid", ent_map)
 	if err != nil {
 		t.Error(`db update error`, err)
 	}
 	t.Logf("update entity=%s id=%s new-rev=%s\n", entity, id, rev)
 
-	ent_map, err = dbInt.Read(entity, id)
+	ent_map, err = database.Read(dbInt, entity, id)
 	if err != nil {
 		t.Error(`db read error`, err)
 	}
 	t.Logf("read entity=%s id=%s val=%v\n", entity, id, ent_map)
 
-	err = dbInt.Delete(entity, id, rev)
+	//err = Delete(dbInt.GetDbi(), entity, id, rev)
+	err = dbInt.DbwDelete(entity, ent_map)
 	if err != nil {
 		t.Error(`db delete error`, err)
 	}
 	// try again - should get error
-	err = dbInt.Delete(entity, id, rev)
+	//err = Delete(dbInt.GetDbi(), entity, id, rev)
+	err = dbInt.DbwDelete(entity, ent_map)
 	if err != nil {
 		t.Logf("repeat db delete: get error=%v\n", err)
 	} else {
@@ -162,17 +180,17 @@ func TestCreate(t *testing.T) {
 	}
 
 	loc, err := time.LoadLocation("Singapore")
-	nowStr, nowTime := TimeNow(loc)
+	nowStr, nowTime := misc.TimeNowLocale(loc)
 	t.Logf("TimeNow returns loc=%v str=%s tn=%v\n", loc, nowStr, nowTime)
 	checkOutTime, err := CalcCheckoutTime(nowTime, "3 Hours")
 	t.Logf("CalcCheckoutTime returns=(%s) err=%v\n", checkOutTime, err)
 
 	loc = time.FixedZone("UTC-8", -8*60*60)
-	nowStr, nowTime = TimeNow(loc)
+	nowStr, nowTime = misc.TimeNowLocale(loc)
 	t.Logf("TimeNow returns loc=%v str=%s tn=%v\n", loc, nowStr, nowTime)
 
 	loc = time.FixedZone("UTC-8", 8*60*60)
-	nowStr, nowTime = TimeNow(loc)
+	nowStr, nowTime = misc.TimeNowLocale(loc)
 	t.Logf("TimeNow returns loc=%v str=%s tn=%v\n", loc, nowStr, nowTime)
 
 	role := "Manager"
@@ -216,6 +234,6 @@ func TestCreate(t *testing.T) {
 
 func TestEncrypt(t *testing.T) {
 
-	hashed := HashIt("xyz")
+	hashed := config.HashIt("xyz")
 	t.Logf("test-encrypt: xyz=%s\n", hashed)
 }

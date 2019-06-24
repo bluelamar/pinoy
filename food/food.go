@@ -1,4 +1,4 @@
-package main
+package food
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/bluelamar/pinoy/psession"
 )
 
 type FoodItem struct {
@@ -13,21 +15,21 @@ type FoodItem struct {
 	Size     string
 	Price    string
 	Quantity int
-	Id       string
+	ID       string
 }
 type FoodTable struct {
-	*SessionDetails
+	*psession.SessionDetails
 	FoodData []FoodItem
 	Room     string
 }
 
 type FoodRecord struct {
-	*SessionDetails
+	*psession.SessionDetails
 	FoodData FoodItem
 	Room     string
 }
 
-func food(w http.ResponseWriter, r *http.Request) {
+func Food(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("food:method:", r.Method)
 	if r.Method != "GET" {
 		fmt.Printf("food: bad http method: should only be a GET\n")
@@ -46,21 +48,21 @@ func food(w http.ResponseWriter, r *http.Request) {
 
 	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/food.gtpl", "static/header.gtpl")
 	if err != nil {
-		fmt.Printf("food: err: %s\n", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println("food: Failed to parse templaste: err=", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
 	} else {
-		sessDetails := get_sess_details(r, "Food Items", "Food Item page to Pinoy Lodge")
+		sessDetails := psession.Get_sess_details(r, "Food Items", "Food Item page to Pinoy Lodge")
 		a1 := FoodItem{
 			Item:  "San Miguel beer",
 			Size:  "large",
 			Price: "$2.50",
-			Id:    "a1",
+			ID:    "a1",
 		}
 		a2 := FoodItem{
 			Item:  "Buko Pandan",
 			Size:  "small",
 			Price: "$4.75",
-			Id:    "a2",
+			ID:    "a2",
 		}
 
 		ftbl := make([]FoodItem, 2)
@@ -74,21 +76,21 @@ func food(w http.ResponseWriter, r *http.Request) {
 		}
 		err = t.Execute(w, &foodData)
 		if err != nil {
-			fmt.Println("food: err=", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println("food: Failed to execute template: err=", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
 		}
 	}
 }
 
-func upd_food(w http.ResponseWriter, r *http.Request) {
+func UpdFood(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("upd_food:method:", r.Method)
 	if r.Method != "POST" {
-		fmt.Printf("upd_food: bad http method: should only be a POST\n")
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		log.Println("upd_food: bad http method: should only be a POST")
+		http.Error(w, "Bad request", http.StatusBadRequest) // FIX
 		return
 	}
 	r.ParseForm()
-	for k, v := range r.Form {
+	for k, v := range r.Form { // FIX
 		fmt.Println("key:", k)
 		fmt.Println("val:", strings.Join(v, ""))
 	}
@@ -102,13 +104,13 @@ func upd_food(w http.ResponseWriter, r *http.Request) {
 	// verify all fields are set
 
 	// TODO set in db
-	fmt.Printf("upd_food: item=%s size=%s cost=%s id=%s\n", item, size, cost, id)
+	fmt.Printf("upd_food:FIX item=%s size=%s cost=%s id=%s\n", item, size, cost, id)
 
-	fmt.Printf("upd_food: post about to redirect to food\n")
+	fmt.Printf("upd_food:FIX post about to redirect to food\n")
 	http.Redirect(w, r, "/desk/food", http.StatusFound)
 }
 
-func purchase(w http.ResponseWriter, r *http.Request) {
+func Purchase(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("purchase:method:", r.Method)
 	// item size room
 	// for get - prefill fields based on query parameters
@@ -154,21 +156,21 @@ func purchase(w http.ResponseWriter, r *http.Request) {
 			id = ids[0]
 		}
 
-		fmt.Printf("purchase: room=%s item=%s size=%s price=%s id=%s\n", room, item, size, price, id)
+		fmt.Printf("purchase:FIX room=%s item=%s size=%s price=%s id=%s\n", room, item, size, price, id)
 
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/purchase.gtpl", "static/header.gtpl")
 		if err != nil {
-			fmt.Printf("purchase:err: %s", err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println("purchase: Failed to parse template: err=", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
 		} else {
-			sessDetails := get_sess_details(r, "Purchase", "Purchase page of Pinoy Lodge")
+			sessDetails := psession.Get_sess_details(r, "Purchase", "Purchase page of Pinoy Lodge")
 
 			foodItem := FoodItem{
 				Item:  item,
 				Size:  size,
 				Price: price,
 				//Quantity: 3,
-				Id: id,
+				ID: id,
 			}
 			foodData := FoodRecord{
 				sessDetails,
@@ -177,14 +179,14 @@ func purchase(w http.ResponseWriter, r *http.Request) {
 			}
 			err = t.Execute(w, foodData)
 			if err != nil {
-				fmt.Println("purchase err=", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				log.Println("purchase: Failed to execute template: err=", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
 			}
 		}
 	} else {
-		fmt.Println("purchase: should be post")
+		fmt.Println("purchase:FIX should be post")
 		r.ParseForm()
-		for k, v := range r.Form {
+		for k, v := range r.Form { // FIX
 			fmt.Println("key:", k)
 			fmt.Println("val:", strings.Join(v, ""))
 		}
@@ -193,12 +195,12 @@ func purchase(w http.ResponseWriter, r *http.Request) {
 		size := r.Form["size"]
 		quantity := r.Form["quantity"]
 		id := r.Form["id"]
-		room_num := r.Form["room_num"]
+		roomNum := r.Form["room_num"]
 
 		// TODO set in db
-		fmt.Printf("purchase: item=%s size=%s quantity=%s room-num=%s id=%s\n", item, size, quantity, room_num, id)
+		fmt.Printf("purchase:FIX item=%s size=%s quantity=%s room-num=%s id=%s\n", item, size, quantity, roomNum, id)
 
-		fmt.Printf("purchase: post about to redirect to room_status\n")
+		fmt.Printf("purchase:FIX post about to redirect to room_status\n")
 		http.Redirect(w, r, "/desk/room_status", http.StatusFound)
 	}
 }

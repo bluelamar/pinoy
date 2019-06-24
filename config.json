@@ -1,0 +1,14 @@
+{
+	"DbUrl":  "http://localhost",
+	"DbName": "",
+	"DbPort": 5984,
+	"DbUser": "yourDBuser",
+	"DbPwd":  "yourDBuserPassword",
+	"DbCommTimeout": 5,
+	"LogOutput": "stdout",
+	"LogFile": "",
+	"CookieSecret": "something-very-secret",
+	"CookieSecretDbEntity": "",
+	"StatsMonitorInterval": 60,
+	"RoomStatusMonitorInterval": 2
+}

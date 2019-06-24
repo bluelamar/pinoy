@@ -23,7 +23,7 @@ Invalid PIN was specified, please try again:
     </tr>
     <tr>
     <td>Checkin Time</td><td>
-    <input required placeholder="Checkin Time" label="false" value="{{.CheckinTime}}" name="citime" id="citime" />
+    <input readonly required placeholder="Checkin Time" label="false" value="{{.CheckinTime}}" name="citime" id="citime" />
     </td>
     </tr>
     <tr>
@@ -31,12 +31,19 @@ Invalid PIN was specified, please try again:
     <td>
     <select id="hopper" name="hopper" >
     {{range $element := .Hoppers}}
-      <option value="{{$element}}">{{$element}}</option>
+      {{if eq $element "none"}}
+        <option selected>{{$element}}</option>
+      {{else}}
+        <option value="{{$element}}">{{$element}}</option>
+      {{end}}
     {{end}}
     </select>
     </td>
     <td>
-    <input required type="password" placeholder="PIN" label="false" spellcheck="false" class="is-sensitive"  value="" name="bell_hop_pin" id="bell_hop_pin" />
+    <input placeholder="Input User ID if not in List" label="false" spellcheck="false" class="is-sensitive" value="" name="user_id" id="user_id" />
+    </td>
+    <td>
+    <input required type="password" placeholder="PIN" label="false" spellcheck="false" class="is-sensitive" value="" name="bell_hop_pin" id="bell_hop_pin" />
     </td>
     </tr>
     </table>

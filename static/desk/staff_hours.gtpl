@@ -7,15 +7,31 @@
 
 <p><h3>{{.Sess.Role}} Page</h3></p>
 
+{{if eq .Sess.Role "Manager"}}
+  <p><a id="backup" class="button" href="/manager/backup_staff_hours">Backup Staff Hours and Reset</a></p>
+
+  <p><a id="backup" class="button" href="/desk/report_staff_hours?bkup=b">Show Previous Backup Staff Hours</a></p>
+
+  <p><a id="backup" class="button" href="/desk/report_staff_hours?bkup=c">Show Oldest Backup Staff Hours</a></p>
+{{if ne .Title "Current Staff Hours"}}
+  <p><a id="backup" class="button" href="/desk/report_staff_hours">Show Current Staff Hours</a></p>
+{{end}}
+{{end}}
+
+<p><h3>{{.Title}}</h3></p>
+{{if ne .BackupTime ""}}
+<p>Backed up at {{.BackupTime}}</p>
+{{end}}
+
 <table>
 <tr>
-<th>User Id</th><th>Last Clock-in</th><th>Last Clock-out</th><th>Expected Hours</th><th>Total Hours</th><th>Clock In</th><th>Clock Out</th>
+<th>User Id</th><th>Last Clock-in</th><th>Last Clock-out</th><th>Expected Hours</th><th>Total Expected Hours</th><th>Total Hours</th><th>Clock In</th><th>Clock Out</th>
 </tr>
 {{range .StaffHours}}
 <tr>
-<td>{{.UserID}}</td><td>{{.LastClockinTime}}</td><td>{{.LastClockoutTime}}</td><td>{{.ExpectedHours}}</td><td>{{.TotalHours}}</td>
-<td><a id="upd_staff_hours" class="button" href="/desk/upd_staff_hours?user={{.UserID}}&update=clockin">Clock in</a></td>
-<td><a id="upd_staff_hours" class="button" href="/desk/upd_staff_hours?user={{.UserID}}&update=clockout">Clock out</a></td>
+<td>{{.UserID}}</td><td>{{.LastClockinTime}}</td><td>{{.LastClockoutTime}}</td><td>{{.ExpectedHours}}</td><td>{{.TotalExpectedHours}}</td><td>{{.TotalHours}}</td>
+<td><a id="upd_staff_hours" class="button" href="/desk/upd_staff_hours?user={{.UserID}}&update=clockin">Clock in [{{.ClockInCnt}}]</a></td>
+<td><a id="upd_staff_hours" class="button" href="/desk/upd_staff_hours?user={{.UserID}}&update=clockout">Clock out [{{.ClockOutCnt}}]</a></td>
 
 </tr>
 {{else}}

@@ -1,5 +1,30 @@
 {{ define "pagecontent" }}
 
+<script>
+function roomStateTimer() {
+  var request = new XMLHttpRequest()
+  // Open a new connection, using the GET request on the URL endpoint
+  // FIX TODO change to https and localhost to the domain name
+  //request.open('GET', 'http://localhost:80/desk/room_stati', true);
+  request.open('GET', '/desk/room_stati', true);
+  request.onload = function () {
+    var res = 'Rooms soon to Checkout: ';
+    var data = JSON.parse(this.response)
+    data.forEach(rs => {
+      res = res.concat('[').concat(rs.RoomNum).concat(' at ').concat(rs.CheckoutTime).concat('] ');
+      //console.log(res)
+    })
+    document.getElementById("roomstati").innerHTML = res;
+  }
+  request.send()
+}
+var myVar = setInterval(roomStateTimer, 1000 * 300);
+roomStateTimer();
+</script>
+
+<div id="roomstati" class="roomstati">
+</div>
+
   <h1>Front Desk</h1>
 {{if and .Sess.Auth .Sess.User}}
   <p><h2>Hello {{.Sess.User}}</h2></p>

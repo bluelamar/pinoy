@@ -1,4 +1,4 @@
-package main
+package database
 
 import (
 	"bytes"
@@ -11,11 +11,14 @@ import (
 	"net/http/cookiejar"
 	"strconv"
 	"time"
+
+	"github.com/bluelamar/pinoy/config"
 	//"golang.org/x/net/publicsuffix"
-	// FIX couchdb "github.com/leesper/couchdb-golang"
+	// couchdb "github.com/leesper/couchdb-golang"
 )
 
-type DBInterface struct {
+type CDBInterface struct {
+	DBInterface
 	// FIX dbimpl *couchdb.Server
 	baseUrl string
 	// cookies []*http.Cookie
@@ -23,26 +26,28 @@ type DBInterface struct {
 	client *http.Client
 }
 
-func NewDatabase(cfg *PinoyConfig) (*DBInterface, error) {
+func NewCDatabase() CDBInterface {
+	dbint := CDBInterface{}
+	return dbint
+}
+func (dbint *CDBInterface) Init(cfg *config.PinoyConfig) error {
 	pwd, err := cfg.DecryptDbPwd()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	// FIX TODO build the string for the server: ex: http://localhost:5984/_session
+	// build the string for the server: ex: http://localhost:5984/_session
 	port := strconv.Itoa(cfg.DbPort)
 	url := cfg.DbUrl + ":" + port + "/"
-	var dbint DBInterface
+	//var dbint CDBInterface
 	dbint.baseUrl = url
 	url = dbint.baseUrl + "_session"
 	loginCreds := "name=" + cfg.DbUser + "&password=" + pwd
 	var payLoad = []byte(loginCreds)
-	//`{"title":"Buy cheese and bread for breakfast."}`)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payLoad))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	//req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	timeout := time.Duration(time.Duration(cfg.Timeout) * time.Second)
+	timeout := time.Duration(time.Duration(cfg.DbCommTimeout) * time.Second)
 	jar, err := cookiejar.New(nil) // &cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
 		log.Fatal(err)
@@ -58,7 +63,7 @@ func NewDatabase(cfg *PinoyConfig) (*DBInterface, error) {
 	// FIX svr, err := couchdb.NewServer("http://root:password@localhost:5984/")
 	// curl -c cdbcookies -H "Accept: application/json" -H "Content-Type: application/x-www-form-urlencoded"  http://localhost:5984/_session -X POST -d "name=wsruler&password=oneringtorule"
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 	/* FIX
@@ -79,18 +84,18 @@ func NewDatabase(cfg *PinoyConfig) (*DBInterface, error) {
 		}
 	} */
 
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
+	//fmt.Println("response Status:", resp.Status)
+	//fmt.Println("response Headers:", resp.Header)
 
 	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("response Body:", string(body))
+	fmt.Println("db.init:FIX: response Body:", string(body))
 
 	//var dbint DBInterface
 	//dbint.dbimpl = svr
-	return &dbint, nil
+	return nil
 }
 
-func (dbi *DBInterface) Create(entity, key string, val interface{}) (*map[string]interface{}, error) {
+func (dbi *CDBInterface) Create(entity, key string, val interface{}) (*map[string]interface{}, error) {
 	// create: POST -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/link/${ENTITY} -d "${DATA}"
 	url := dbi.baseUrl + entity
 	valMap := val.(map[string]interface{})
@@ -102,7 +107,7 @@ func (dbi *DBInterface) Create(entity, key string, val interface{}) (*map[string
 	if err != nil {
 		return nil, err
 	}
-	log.Println("FIX create:body=", bytesRepresentation)
+
 	request, err := http.NewRequest("POST", url, bytes.NewReader(bytesRepresentation))
 	if err != nil {
 		return nil, err
@@ -122,12 +127,12 @@ func (dbi *DBInterface) Create(entity, key string, val interface{}) (*map[string
 	if err != nil {
 		return nil, err
 	}
-	log.Println("FIX create: ", result)
+	fmt.Println("FIX db.create: ", result)
 
 	return &result, nil
 }
 
-func (dbi *DBInterface) Read(entity, id string) (*map[string]interface{}, error) {
+func (dbi *CDBInterface) Read(entity, id string) (*map[string]interface{}, error) {
 	// curl -v --cookie "cdbcookies" http://localhost:5984/dblnk/19b74cd4
 	url := dbi.baseUrl + entity + "/" + id
 	request, err := http.NewRequest("GET", url, nil)
@@ -148,14 +153,14 @@ func (dbi *DBInterface) Read(entity, id string) (*map[string]interface{}, error)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("FIX read: ", result)
+	//log.Println("FIX read: ", result)
 
 	return &result, nil
 }
 
 //func (dbi *DBInterface) ReadAll(entity string) (*map[string]interface{}, error) {
 //func (dbi *DBInterface) ReadAll(entity string) ([]string, error) {
-func (dbi *DBInterface) ReadAll(entity string) ([]interface{}, error) {
+func (dbi *CDBInterface) ReadAll(entity string) ([]interface{}, error) {
 	// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/_all_docs
 	url := dbi.baseUrl + entity + "/_all_docs?include_docs=true"
 	request, err := http.NewRequest("GET", url, nil)
@@ -184,10 +189,10 @@ func (dbi *DBInterface) ReadAll(entity string) ([]interface{}, error) {
 		return nil, err
 	}
 
-	log.Println("FIX readall result: ", result)
+	//log.Println("FIX readall result: ", result)
 	var rows []interface{}
 	rows = result["rows"].([]interface{})
-	log.Println("FIX readall rows: ", rows)
+	//log.Println("FIX readall rows: ", rows)
 	//return rows, nil
 
 	//ids := make([]string, len(rows))
@@ -206,7 +211,7 @@ func (dbi *DBInterface) ReadAll(entity string) ([]interface{}, error) {
 }
 
 // return the new revision
-func (dbi *DBInterface) Update(entity, id, rev string, val map[string]interface{}) (string, error) {
+func (dbi *CDBInterface) Update(entity, id, rev string, val map[string]interface{}) (string, error) {
 	// curl --cookie "cdbcookies" -H "Content-Type: application/json" http://localhost:5984/stuff/592ccd646f8202691a77f1b1c5004496 -X PUT -d '{"name":"sam","age":42,"_rev":"1-3f12b5828db45fda239607bf7785619a"}'
 	url := dbi.baseUrl + entity + "/" + id
 	//val["_id"] = id
@@ -232,13 +237,13 @@ func (dbi *DBInterface) Update(entity, id, rev string, val map[string]interface{
 		return "", err
 	}
 	// ex: map[ok:true id:3d_shapes rev:28-d2bc68f0f0132cbb483ee1196e3c482e]
-	log.Println("FIX put: ", result)
+	fmt.Println("FIX db.put: ", result)
 	// FIX TODO get the status from the result
 	rev = result["rev"].(string)
 	return rev, err
 }
 
-func (dbi *DBInterface) Delete(entity, id, rev string) error {
+func (dbi *CDBInterface) Delete(entity, id, rev string) error {
 	// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/f00dc0ba83aec8f560bd7c8036000c0a?rev=1-e1e73b2d88ada8d8f636cb13f2c06b71 -X DELETE
 
 	url := dbi.baseUrl + entity + "/" + id + "?rev=" + rev
@@ -256,22 +261,22 @@ func (dbi *DBInterface) Delete(entity, id, rev string) error {
 
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
-	log.Println("FIX delete: ", result)
+	fmt.Println("FIX db.delete: ", result)
 	return checkResultError(&result, err)
 }
 
-func (dbi *DBInterface) Find(entity, field, value string) ([]interface{}, error) {
+func (dbi *CDBInterface) Find(entity, field, value string) ([]interface{}, error) {
 	// TODO find
 	// curl -v -H "Content-Type: application/json" --cookie "cdbcookies" http://localhost:5984/testxyz/_find -X POST -d $SEL
 	// SEL='{"selector":{"shape":{"$eq":"pyramid"}}}'
-	/* FIX
-	String selector = "{\"selector\":{\"" + field  + "\":{\"$eq\":\"" + value + "\"}}}";
+	/*
+		String selector = "{\"selector\":{\"" + field  + "\":{\"$eq\":\"" + value + "\"}}}";
 
-		Map<String,Object> entity = post(path+"/_find", selector, null);
-		if (entity != null) {
-			Object retObj = entity.get("docs");
-			return (List<Object>)retObj;
-		} */
+			Map<String,Object> entity = post(path+"/_find", selector, null);
+			if (entity != null) {
+				Object retObj = entity.get("docs");
+				return (List<Object>)retObj;
+			} */
 	entity = entity + "/_find"
 	// TODO change how to make json for val
 	//val := `{"selector":{"` + field + `":{"$eq":"` + value + `"}}}`
@@ -281,16 +286,16 @@ func (dbi *DBInterface) Find(entity, field, value string) ([]interface{}, error)
 	//fldm[field] = eqm
 	sel := map[string]interface{}{"selector": fldm} // make(map[string]interface{})
 	//sel["selector"] = fldm
-	log.Println("FIX Find: entity=", entity, " :val=", sel) // FIX val)
+	fmt.Println("FIX Find: entity=", entity, " :val=", sel)
 	// FIX var ret *map[string]interface{}
 	var err error
 	//ret, err = dbi.Create(entity, "", val)
 	url := dbi.baseUrl + entity
-	bytesRepresentation, err := json.Marshal(sel) // FIX val)
+	bytesRepresentation, err := json.Marshal(sel)
 	if err != nil {
 		return nil, err
 	}
-	//log.Println("FIX create:body=", bytesRepresentation)
+
 	request, err := http.NewRequest("POST", url, bytes.NewReader(bytesRepresentation))
 	if err != nil {
 		return nil, err
@@ -300,25 +305,46 @@ func (dbi *DBInterface) Find(entity, field, value string) ([]interface{}, error)
 
 	resp, err := dbi.client.Do(request)
 	if err != nil {
-		log.Println("FIX find: client res=", resp, " :err=", err)
+		fmt.Println("FIX find: client res=", resp, " : err=", err)
 		return nil, err
 	}
 
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
-	log.Println("FIX find: decoder=", result)
 	err = checkResultError(&result, err)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("FIX find: res=", result)
-	/* FIX
-	err = checkResultError(ret, err)
-	if err != nil {
-		return nil, err
-	} */
+	fmt.Println("FIX db.find: res=", result)
 	//return (*ret)["docs"].([]interface{}), nil
 	return result["docs"].([]interface{}), nil
+}
+
+func (pDb *CDBInterface) DbwDelete(entity string, rMap *map[string]interface{}) error {
+	id, ok := (*rMap)["_id"]
+	if !ok {
+		return errors.New("cdb:missing required id")
+	}
+	rev, ok := (*rMap)["_rev"]
+	if !ok {
+		return errors.New("cdb:missing required rev")
+	}
+	return pDb.Delete(entity, id.(string), rev.(string))
+}
+
+/*
+ * Determines to update if _id is present and key is empty, else create entry
+ */
+func (pDb *CDBInterface) DbwUpdate(entity, key string, rMap *map[string]interface{}) error {
+	var err error
+	id, ok := (*rMap)["_id"]
+	if ok && key == "" {
+		_, err = pDb.Update(entity, id.(string), (*rMap)["_rev"].(string), (*rMap))
+	} else {
+		_, err = pDb.Create(entity, key, (*rMap))
+	}
+
+	return err
 }
 
 func checkResultError(result *map[string]interface{}, err error) error {

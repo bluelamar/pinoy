@@ -314,10 +314,12 @@ func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 		log.Println("BackupStaffHours: Failed to copy hours from db=", fromDB, " to=", toDB, " : err=", err)
 	}
 
-	nowStr, _ := misc.TimeNow()
-	tstamp := map[string]interface{}{"BackupTime": nowStr}
-	if err := database.DbwUpdate(toDB, "BackupTime", &tstamp); err != nil {
-		log.Println(`BackupStaffHours:ERROR: db=`, toDB, ` update timestamp: err=`, err)
+	bkupTime, err := database.DbwRead(fromDB, "BackupTime")
+	if err == nil {
+		// write it to the toDB
+		database.DbwUpdate(toDB, "BackupTime", bkupTime)
+	} else {
+		log.Println("BackupStaffHours: Failed to copy backup time from=", fromDB, " to=", toDB, " : err=", err)
 	}
 
 	toDB = fromDB
@@ -327,8 +329,12 @@ func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 	if err := copyHours(StaffHoursEntity, toDB); err != nil {
 		log.Println("BackupStaffHours: Failed to copy hours from db=", StaffHoursEntity, " to=", toDB, " : err=", err)
 	}
-	if err := database.DbwUpdate(toDB, "BackupTime", &tstamp); err != nil {
-		log.Println(`BackupStaffHours:ERROR: db=`, toDB, ` update timestamp: err=`, err)
+	bkupTime, err = database.DbwRead(StaffHoursEntity, "BackupTime")
+	if err == nil {
+		// write it to the toDB
+		database.DbwUpdate(toDB, "BackupTime", bkupTime)
+	} else {
+		log.Println("BackupStaffHours: Failed to copy backup time from=", fromDB, " to=", toDB, " : err=", err)
 	}
 
 	// lastly reset the current staff hours
@@ -355,6 +361,8 @@ func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	nowStr, _ := misc.TimeNow()
+	tstamp := map[string]interface{}{"BackupTime": nowStr}
 	if err := database.DbwUpdate(StaffHoursEntity, "BackupTime", &tstamp); err != nil {
 		log.Println(`BackupStaffHours:ERROR: db update timestamp: err=`, err)
 	}

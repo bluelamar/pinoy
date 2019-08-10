@@ -184,7 +184,7 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 	}
 	err = t.Execute(w, &tblData)
 	if err != nil {
-		log.Println("report_staff_hours:ERROR: could execute template: err=", err)
+		log.Println("report_staff_hours:ERROR: could not execute template: err=", err)
 		sessDetails.Sess.Message = "Failed to report staff hours"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 	}

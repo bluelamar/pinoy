@@ -77,6 +77,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		misc.IncrRequestCnt()
 	} else {
 		// user signing in
 		r.ParseForm()
@@ -104,6 +105,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		// use hash only for user password
 		pwd := config.HashIt(password[0])
 		if passwd != pwd {
+			misc.IncrFailedLoginCnt()
 			http.Error(w, "Not authorized", http.StatusUnauthorized)
 			return
 		}
@@ -127,6 +129,8 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		// update the employee report record - dont wait for it
 		go staff.UpdateEmployeeHours(username[0], true, 12, psession.Sess_attrs(r))
 
+		misc.IncrRequestCnt()
+		misc.IncrLoginCnt()
 		log.Println("signin: logged in=", username[0], " : auth=", sess.Values["authenticated"].(bool))
 		http.Redirect(w, r, "/frontpage", http.StatusFound)
 	}
@@ -140,25 +144,27 @@ func frontpage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
 		sessDetails := psession.Get_sess_details(r, "Front page", "Front page to Pinoy Lodge")
-		err = t.Execute(w, sessDetails)
-		if err != nil {
+		if err = t.Execute(w, sessDetails); err != nil {
 			log.Println("frontpage:ERROR: Failed to execute template: err=", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
+	misc.IncrRequestCnt()
 }
 
-func initDB(cfg *config.PinoyConfig) {
+func initDB(cfg *config.PinoyConfig) error {
 	db1 := new(database.CDBInterface)
 	var pDb database.DBInterface = db1
 	err := database.Init(&pDb, cfg)
 	if err != nil {
 		log.Println("main: db init error=", err)
-		log.Fatal("Failed to create db: ", err)
-	} else {
-		log.Printf("pinoy:main: db init success")
-		database.SetDB(&pDb)
+		//log.Fatal("Failed to create db: ", err)
+		return err
 	}
+
+	log.Printf("pinoy:main: db init success")
+	database.SetDB(&pDb)
+	return nil
 }
 
 func runDiags(cfg *config.PinoyConfig) {
@@ -236,10 +242,15 @@ func main() {
 	psession.InitStore(cfg)
 
 	misc.InitTime("Singapore", 8)
+	misc.InitStats()
 
-	// initialize DB then the about to checkout rooms
-	initDB(cfg)
-	runRoomCheck(cfg)
+	// initialize DB then the "about to checkout rooms"
+	initDbErr := initDB(cfg)
+	if initDbErr != nil {
+		log.Println("main: Failed to init db - retry in a few minutes")
+	} else {
+		runRoomCheck(cfg)
+	}
 
 	// setup background tasks
 	minutes := cfg.StatsMonitorInterval
@@ -262,7 +273,14 @@ func main() {
 				runDiags(cfg)
 				initDB(cfg)
 			case <-roomTicker.C:
-				runRoomCheck(cfg)
+				if initDbErr != nil {
+					// upon startup db can take a minute or so to start so we catch
+					// that situation here
+					initDbErr = initDB(cfg)
+				}
+				if initDbErr == nil {
+					runRoomCheck(cfg)
+				}
 			case <-quit:
 				statsTicker.Stop()
 				roomTicker.Stop()
@@ -293,6 +311,7 @@ func main() {
 	http.HandleFunc("/manager/room_rates", room.RoomRates)
 	http.HandleFunc("/manager/upd_room_rate", room.UpdRoomRate)
 	http.HandleFunc("/manager/upd_food", food.UpdFood)
+	http.HandleFunc("/manager/svc_stats", misc.SvcStats)
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("static/css"))))
 	err = http.ListenAndServe(":8080", context.ClearHandler(http.DefaultServeMux)) // setting listening port
 	if err != nil {

@@ -1,7 +1,6 @@
 package psession
 
 import (
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -19,14 +18,14 @@ const (
 	CookieSecretKey = "cookieID"
 )
 
-// TODO create secret using random values - should be from db? so all servers use
+// create secret using random values - could be from db? so all servers use
 // the same secret
 // Note: Don't store your key in your source code. Pass it via an
 // environmental variable, or flag (or both), and don't accidentally commit it
 // alongside your code. Ensure your key is sufficiently random - i.e. use Go's
+
 // crypto/rand or securecookie.GenerateRandomKey(32) and persist the result
-// TODO get the cookie store secret from the config file
-// FIX var store = sessions.NewCookieStore([]byte("something-very-secret"))
+// Get the cookie store secret from the config file
 var store *sessions.CookieStore
 
 type PinoySession struct {
@@ -55,7 +54,6 @@ type SessionMgr interface {
 }
 
 func InitStore(cfg *config.PinoyConfig) {
-	// FIX var store = sessions.NewCookieStore([]byte("something-very-secret"))
 	cookieSecret := cfg.CookieSecret
 	cookieSecretDbEntity := cfg.CookieSecretDbEntity
 	if cookieSecret == "" {
@@ -76,10 +74,9 @@ func InitStore(cfg *config.PinoyConfig) {
 	}
 	store = sessions.NewCookieStore([]byte(cookieSecret))
 	storeOptions := store.Options
-	fmt.Printf("store options:FIX path=%s domain=%s httponly=%t maxage=%d secure=%t\n",
-		storeOptions.Path, storeOptions.Domain, storeOptions.HttpOnly, storeOptions.MaxAge, storeOptions.Secure)
+	//fmt.Printf("store options:FIX path=%s domain=%s httponly=%t maxage=%d secure=%t\n",
+	//	storeOptions.Path, storeOptions.Domain, storeOptions.HttpOnly, storeOptions.MaxAge, storeOptions.Secure)
 
-	// FIX TODO add session expiry to config
 	// set session expiry to default of 12 hours
 	storeOptions.MaxAge = 12 * 60 * 60
 	store.Options = storeOptions
@@ -98,21 +95,14 @@ func Sess_attrs(r *http.Request) *PinoySession {
 
 	session, err := store.Get(r, CookieNameSID)
 	if err != nil {
-		log.Printf("sess_attrs: err=%v\n", err)
-	} else {
-		fmt.Printf("sess_attrs:FIX: sess=%v\n", session)
-	}
-	for k, v := range session.Values {
-		fmt.Printf("s-key:FIX: %v", k)
-		fmt.Printf(" : s-val:FIX: %v\n", v)
+		log.Println("sess_attrs: no cookie in store: err=", err)
 	}
 	// Check if user is authenticated
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
 		//http.Error(w, "Forbidden", http.StatusForbidden)
 		session.Values["authenticated"] = false
-		fmt.Printf("sess_attrs:FIX: set auth=%t\n", session.Values["authenticated"].(bool))
 	}
-	fmt.Printf("sess_attrs:FIX: auth=%t\n", session.Values["authenticated"].(bool))
+	//fmt.Printf("sess_attrs:FIX: auth=%t\n", session.Values["authenticated"].(bool))
 
 	user := ""
 	if sess_user, ok := session.Values["user"].(string); ok {

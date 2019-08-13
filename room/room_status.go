@@ -139,7 +139,6 @@ func GetRoomStati(roomStatus string, durLimit time.Duration) ([]RoomState, error
 				checkoutTime, err := time.ParseInLocation(staff.DateTimeLongForm, rs.CheckoutTime, misc.GetLocale())
 				if err == nil {
 					dur := checkoutTime.Sub(nowTime)
-					//fmt.Println("FIX getrstatus: now=", nowTime, " : cotime=", checkoutTime, " : sub=", dur, " :durlimit=", durLimit)
 					if dur.Minutes() > durLimit.Minutes() {
 						continue
 					}
@@ -154,6 +153,7 @@ func GetRoomStati(roomStatus string, durLimit time.Duration) ([]RoomState, error
 }
 
 func RoomStatus(w http.ResponseWriter, r *http.Request) {
+	misc.IncrRequestCnt()
 	sessDetails := psession.Get_sess_details(r, "Room Status", "Room Status page for Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
@@ -278,8 +278,7 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	t := time.Now()
-	fmt.Printf("register:method=%s time=%s\n", r.Method, t.Local())
+	misc.IncrRequestCnt()
 
 	// check session expiration and authorization
 	sessDetails := psession.Get_sess_details(r, "Registration", "Register page of Pinoy Lodge")
@@ -364,19 +363,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		fmt.Println("register: should be post")
 		r.ParseForm()
-		for k, v := range r.Form {
-			fmt.Println("key:", k)
-			fmt.Println("val:", strings.Join(v, ""))
-		}
+
 		fname := r.Form["first_name"]
 		lname := r.Form["last_name"]
 		duration := r.Form["duration"]
 		room_num := r.Form["room_num"]
 
 		// set in db
-		fmt.Printf("register: first-name=%s last-name=%s room-num=%s duration=%s\n", fname, lname, room_num, duration)
 		// read room status record and reset as booked with customers name
 		rs, err := database.DbwRead(RoomStatusEntity, room_num[0])
 		if err != nil {
@@ -396,7 +390,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		(*rs)["CheckoutTime"] = checkOutTime
 
 		// put status record back into db
-		// FIX TODO record for the customer ?
+		// TODO record for the customer ?
 		err = database.DbwUpdate(RoomStatusEntity, "", rs)
 		if err != nil {
 			log.Println("register:ERROR: Failed to update room status for room=", room_num[0], " : err=", err)

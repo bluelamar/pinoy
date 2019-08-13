@@ -1,5 +1,5 @@
 
-GO_VERSION?=1.11.5
+GO_VERSION?=1.12.7
 BUILD_NUMBER?=local
 GIT_COMMIT?=$(shell git log --pretty=format:'%H' -n 1)
 VERSION=$(shell cat ./VERSION)

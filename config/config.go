@@ -35,6 +35,5 @@ func LoadConfig(fpath string) (*PinoyConfig, error) {
 		fmt.Println("error:", err)
 		log.Println("Config: Failed to unmarshal config file:", err)
 	}
-	fmt.Printf("loadconfig:FIX: %+v\n", cfg)
 	return &cfg, nil
 }

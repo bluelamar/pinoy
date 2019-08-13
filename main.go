@@ -28,6 +28,7 @@ var curRoomStati []room.RoomState
 
 // signout revokes authentication for a user
 func signout(w http.ResponseWriter, r *http.Request) {
+	misc.IncrRequestCnt()
 	sess, err := psession.GetUserSession(w, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -51,11 +52,12 @@ func signout(w http.ResponseWriter, r *http.Request) {
 }
 
 func signin(w http.ResponseWriter, r *http.Request) {
+	misc.IncrRequestCnt()
 	if r.Method == "GET" {
 
 		t, err := template.ParseFiles("static/login.gtpl", "static/header.gtpl")
 		if err != nil {
-			fmt.Printf("signin:err: %s", err.Error())
+			log.Println("signin:ERROR: Failed parse template: err=", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -73,19 +75,14 @@ func signin(w http.ResponseWriter, r *http.Request) {
 
 		err = t.Execute(w, loginPage)
 		if err != nil {
-			log.Println("signin:ERROR: err=", err)
+			log.Println("signin:ERROR: Failed to exec template: err=", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		misc.IncrRequestCnt()
 	} else {
 		// user signing in
 		r.ParseForm()
-		/*
-			for k, v := range r.Form {
-				fmt.Println("FIX key:", k)
-				fmt.Println("FIX val:", strings.Join(v, ""))
-			} */
+
 		username := r.Form["user_id"]
 		password := r.Form["user_password"]
 
@@ -129,7 +126,6 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		// update the employee report record - dont wait for it
 		go staff.UpdateEmployeeHours(username[0], true, 12, psession.Sess_attrs(r))
 
-		misc.IncrRequestCnt()
 		misc.IncrLoginCnt()
 		log.Println("signin: logged in=", username[0], " : auth=", sess.Values["authenticated"].(bool))
 		http.Redirect(w, r, "/frontpage", http.StatusFound)
@@ -157,12 +153,12 @@ func initDB(cfg *config.PinoyConfig) error {
 	var pDb database.DBInterface = db1
 	err := database.Init(&pDb, cfg)
 	if err != nil {
-		log.Println("main: db init error=", err)
+		log.Println("main:ERROR: db init error=", err)
 		//log.Fatal("Failed to create db: ", err)
 		return err
 	}
 
-	log.Printf("pinoy:main: db init success")
+	log.Println("pinoy:main: db init success")
 	database.SetDB(&pDb)
 	return nil
 }
@@ -172,7 +168,7 @@ func runDiags(cfg *config.PinoyConfig) {
 	runtime.ReadMemStats(&memStats)
 	log.Println("diags: mem-stats: total-bytes-virtual-memory(sys)=", memStats.Sys,
 		" : alloc-heap=", memStats.HeapAlloc, " : num-GCs=", memStats.NumGC)
-	// FIX TODO report scoreboard stats - ex: number of room registrations, et al?
+	// TODO report scoreboard stats - ex: number of room registrations, et al?
 
 }
 
@@ -247,7 +243,7 @@ func main() {
 	// initialize DB then the "about to checkout rooms"
 	initDbErr := initDB(cfg)
 	if initDbErr != nil {
-		log.Println("main: Failed to init db - retry in a few minutes")
+		log.Println("main:ERROR: Failed to init db - retry in a few minutes")
 	} else {
 		runRoomCheck(cfg)
 	}

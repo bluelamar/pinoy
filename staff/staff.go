@@ -1,7 +1,6 @@
 package staff
 
 import (
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/bluelamar/pinoy/config"
 	"github.com/bluelamar/pinoy/database"
+	"github.com/bluelamar/pinoy/misc"
 	"github.com/bluelamar/pinoy/psession"
 )
 
@@ -36,7 +36,7 @@ type UpdateEmployee struct {
 }
 
 func Staff(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("staff:method:", r.Method)
+	misc.IncrRequestCnt()
 	sessDetails := psession.Get_sess_details(r, "Staff", "Staff page to Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
@@ -44,93 +44,93 @@ func Staff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != "GET" {
-		fmt.Printf("staff: bad http method: should only be a GET\n")
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		log.Println("staff: bad http method: should only be a GET")
+		sessDetails.Sess.Message = "Bad request"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
 		return
 	}
 
 	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/staff.gtpl", "static/header.gtpl")
 	if err != nil {
-		fmt.Printf("staff: err: %s\n", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	} else {
+		log.Println("staff: Failed to parse template: err=", err)
+		sessDetails.Sess.Message = "Internal error"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		return
+	}
 
-		resArray, err := database.DbwReadAll(StaffEntity)
-		if err != nil {
-			log.Println("staff:ERROR: Failed to readall staff from db: err=", err)
-			sessDetails.Sess.Message = "Failed to read staff"
-			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
-			return
+	resArray, err := database.DbwReadAll(StaffEntity)
+	if err != nil {
+		log.Println("staff:ERROR: Failed to readall staff from db: err=", err)
+		sessDetails.Sess.Message = "Failed to read staff"
+		psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		return
+	}
+
+	emps := make([]Employee, 0)
+
+	for _, v := range resArray {
+		vm := v.(map[string]interface{})
+		id := ""
+		name, exists := vm["name"]
+		if !exists {
+			continue
 		}
-		fmt.Println("FIX staff: res=", resArray)
-
-		emps := make([]Employee, 0)
-
-		for _, v := range resArray {
-			vm := v.(map[string]interface{})
-			log.Println("FIX staff: emp=", vm)
-			id := ""
-			name, exists := vm["name"]
-			if !exists {
-				continue
-			}
-			id = name.(string)
-			last := ""
-			name, exists = vm["Last"]
-			if exists {
-				last = name.(string)
-			}
-			first := ""
-			name, exists = vm["First"]
-			if exists {
-				first = name.(string)
-			}
-			middle := ""
-			name, exists = vm["Middle"]
-			if exists {
-				middle = name.(string)
-			}
-			salary := ""
-			name, exists = vm["Salary"]
-			if exists {
-				salary = name.(string)
-			}
-			role := "Staff"
-			name, exists = vm["Role"]
-			if exists && name != nil {
-				role = name.(string)
-			}
-			if last == "" || id == "" {
-				// ignore this record
-				continue
-			}
-
-			emp := Employee{
-				Last:   last,
-				First:  first,
-				Middle: middle,
-				Salary: salary,
-				Role:   role,
-				Name:   id,
-			}
-			emps = append(emps, emp)
+		id = name.(string)
+		last := ""
+		name, exists = vm["Last"]
+		if exists {
+			last = name.(string)
+		}
+		first := ""
+		name, exists = vm["First"]
+		if exists {
+			first = name.(string)
+		}
+		middle := ""
+		name, exists = vm["Middle"]
+		if exists {
+			middle = name.(string)
+		}
+		salary := ""
+		name, exists = vm["Salary"]
+		if exists {
+			salary = name.(string)
+		}
+		role := "Staff"
+		name, exists = vm["Role"]
+		if exists && name != nil {
+			role = name.(string)
+		}
+		if last == "" || id == "" {
+			// ignore this record
+			continue
 		}
 
-		tblData := EmpTable{
-			sessDetails,
-			emps,
+		emp := Employee{
+			Last:   last,
+			First:  first,
+			Middle: middle,
+			Salary: salary,
+			Role:   role,
+			Name:   id,
 		}
-		err = t.Execute(w, &tblData)
-		if err != nil {
-			log.Println("staff:ERROR: Failed to execute template: err=", err)
-			sessDetails.Sess.Message = "Failed to read staff"
-			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
-		}
+		emps = append(emps, emp)
+	}
+
+	tblData := EmpTable{
+		sessDetails,
+		emps,
+	}
+	err = t.Execute(w, &tblData)
+	if err != nil {
+		log.Println("staff:ERROR: Failed to execute template: err=", err)
+		sessDetails.Sess.Message = "Failed to read staff"
+		psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 	}
 }
 
 func AddStaff(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("add_staff:method:", r.Method)
+	misc.IncrRequestCnt()
 	sessDetails := psession.Get_sess_details(r, "Add Employee", "Add Employee page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
@@ -141,34 +141,36 @@ func AddStaff(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/upd_empl.gtpl", "static/header.gtpl")
 		if err != nil {
-			fmt.Printf("add_staff:err: %s", err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		} else {
-			empData := Employee{
-				"",
-				"",
-				"",
-				"",
-				"Staff",
-				"",
-				"",
-			}
-			updData := UpdateEmployee{
-				sessDetails,
-				empData,
-			}
-			err = t.Execute(w, updData)
-			if err != nil {
-				log.Println("add_staff:ERROR: Failed to add staff: err=", err)
-				sessDetails.Sess.Message = "Failed to add staff"
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
-			}
+			log.Println("add_staff: err=", err)
+			sessDetails.Sess.Message = "Internal error"
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			return
+		}
+
+		empData := Employee{
+			"",
+			"",
+			"",
+			"",
+			"Staff",
+			"",
+			"",
+		}
+		updData := UpdateEmployee{
+			sessDetails,
+			empData,
+		}
+		err = t.Execute(w, updData)
+		if err != nil {
+			log.Println("add_staff:ERROR: Failed to add staff: err=", err)
+			sessDetails.Sess.Message = "Failed to add staff"
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		}
 	}
 }
 
 func UpdStaff(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("upd_staff:FIX: method:", r.Method)
+	misc.IncrRequestCnt()
 	// check session expiration and authorization
 	sessDetails := psession.Get_sess_details(r, "Update Employee", "Update Employee page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
@@ -248,7 +250,6 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 			deleteEmp = true
 		}
 
-		fmt.Printf("upd_staff: last=%s first=%s middle=%s salary=%s update=%s\n", lname, fname, mname, salary, update)
 		if id == "" && lname == "" {
 			sessDetails.Sess.Message = "Missing user name to make staff update page"
 			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
@@ -320,15 +321,9 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 			if exists && name != nil {
 				role = name.(string)
 			}
-			/* name, exists = (*entry)["Pwd"]
-			if exists && name != nil {
-				passwd = name.(string)
-			} */
 		}
 
 		if deleteEmp {
-			fmt.Printf("upd_staff: delete employee=%s, %s %s\n", lname, fname, mname)
-
 			err := database.DbwDelete(StaffEntity, entry)
 			if err != nil {
 				log.Println("upd_staff:ERROR: Failed to delete staff=", id, " : err=", err)
@@ -378,10 +373,6 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		r.ParseForm()
-		/* FIX for k, v := range r.Form { // FIX
-			fmt.Println("key:", k)
-			fmt.Println("val:", strings.Join(v, ""))
-		} */
 
 		lname := r.Form["last"][0]
 		fname := r.Form["first"][0]
@@ -389,7 +380,6 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 		salary := r.Form["salary"][0]
 		name := r.Form["name"][0]
 		role := r.Form["role"][0]
-		fmt.Println("upd_staff:FIX post got role=", role)
 		passwd := r.Form["pwd"][0]
 
 		// determine if new user or existing to be updated
@@ -403,16 +393,7 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 			emp := make(map[string]interface{})
 			emap = &emp
 			key = name
-			/* FIX
-			errMsg, exists := (*entry)["error"] // TODO check specific error
-			if exists {
-				log.Printf("upd_staff:FIX: create entity=staff id=%s: error=%v\n", name, errMsg)
-			} else {
-				rev = (*entry)["_rev"].(string) // update existing employee
-			} */
 		}
-
-		fmt.Printf("upd_staff:FIX: last=%s first=%s middle=%s salary=%s\n", lname, fname, mname, salary)
 
 		(*emap)["id"] = name
 		(*emap)["name"] = name
@@ -436,7 +417,6 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 			UpdateEmployeeHours(name, false, 12, sessDetails.Sess)
 		}
 
-		fmt.Printf("upd_staff:FIX: post about to redirect to staff\n")
 		http.Redirect(w, r, "/manager/staff", http.StatusFound)
 	}
 }

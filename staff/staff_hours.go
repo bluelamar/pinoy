@@ -2,7 +2,6 @@ package staff
 
 import (
 	"errors"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -49,7 +48,7 @@ func composeDbName(suffix string) string {
 }
 
 func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("report_staff_hours:FIX method:", r.Method)
+	misc.IncrRequestCnt()
 	sessDetails := psession.Get_sess_details(r, "Staff Hours", "Staff Hours page to Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
@@ -90,14 +89,12 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("FIX report_staff_hours: res=", resArray)
 
 	timeStamp := ""
 	emps := make([]EmpHours, 0)
 	deskRole := sessDetails.Sess.Role == psession.ROLE_DSK
 	for _, v := range resArray {
 		vm := v.(map[string]interface{})
-		fmt.Println("FIX report_staff_hours: emp=", vm)
 		id := ""
 		name, exists := vm["UserID"]
 		if !exists {
@@ -193,7 +190,6 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 
 func getEmpFromMap(empMap map[string]interface{}) *map[string]interface{} {
 
-	fmt.Println("FIX getEmpFromMap: emp=", empMap)
 	id := ""
 	name, exists := empMap["UserID"]
 	if !exists {
@@ -296,7 +292,7 @@ func copyHours(fromDB, toDB string) error {
 	return nil
 }
 func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("backup_staff_hours:FIX:method:", r.Method)
+	misc.IncrRequestCnt()
 	// check session expiration and authorization
 	sessDetails := psession.Get_sess_details(r, "Backup and Reset Employee Hours", "Backup and Reset Employee Hours page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
@@ -371,6 +367,7 @@ func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteStaffHoursEntity(userId string) error {
+	misc.IncrRequestCnt()
 	var err error
 	var rMap *map[string]interface{}
 	rMap, err = database.DbwRead(StaffHoursEntity, userId)
@@ -387,7 +384,7 @@ func DeleteStaffHoursEntity(userId string) error {
 }
 
 func UpdateStaffHours(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("update_staff_hours:FIX:method:", r.Method)
+	misc.IncrRequestCnt()
 	// check session expiration and authorization
 	sessDetails := psession.Get_sess_details(r, "Update Employee Hours", "Update Employee Hours page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
@@ -425,8 +422,6 @@ func UpdateStaffHours(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		update = updates[0]
-
-		fmt.Printf("update_staff_hours:FIX: user=%s update=%s\n", userid, update)
 
 		if update == "clockout" {
 			if err := UpdateEmployeeHours(userid, false, 12, sessDetails.Sess); err != nil {
@@ -469,20 +464,8 @@ func UpdateStaffHours(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		/* FIX
-		var err error
-		var rMap *map[string]interface{}
-		rMap, err = database.DbwRead(StaffHoursEntity, userid)
-		if err != nil {
-			log.Println("update_staff_hours: No staff with name=", userid)
-			sessDetails.Sess.Message = "Failed to update hours for user: " + userid
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusNotFound)
-			return
-		} */
 
 		if update == "delete" {
-			fmt.Printf("update_staff_hours:FIX: delete record for user=%s\n", userid)
-
 			if sessDetails.Sess.Role != psession.ROLE_MGR { // only manager can delete the record
 				sessDetails.Sess.Message = "No Permissions"
 				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
@@ -497,11 +480,6 @@ func UpdateStaffHours(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// clockin request with expected hours
 		r.ParseForm()
-		/* FIX
-		for k, v := range r.Form {
-			fmt.Println("key:", k)
-			fmt.Println("val:", strings.Join(v, ""))
-		} */
 		// get the form parameters - staffid, expected hours=hours
 		userid := r.Form["staffid"][0]
 		hours := r.Form["hours"][0]
@@ -529,7 +507,6 @@ func IsUserLoggedIn(userID string) (bool, *map[string]interface{}, error) {
 		log.Println("IsUserLoggedIn:ERROR: Failed to read user=", userID, " : err=", err)
 		return false, nil, err
 	}
-	fmt.Println("FIX isuserloggedin: read staff=", (*rMap))
 
 	num, ciCntOk := (*rMap)["ClockInCnt"].(float64)
 	if !ciCntOk {
@@ -578,7 +555,6 @@ func IsUserLoggedIn(userID string) (bool, *map[string]interface{}, error) {
 
 func UpdateEmployeeHours(userid string, clockin bool, expHours int, sess *psession.PinoySession) error {
 
-	fmt.Println("UpdEmpHrs:FIX: user=", userid, " : clockin=", clockin, " : exp-hours=", expHours)
 	if userid == "" {
 		log.Println("UpdateEmployeeHours: Missing staff name")
 		return errors.New("Missing staff id")
@@ -588,7 +564,6 @@ func UpdateEmployeeHours(userid string, clockin bool, expHours int, sess *psessi
 	// check if userid is Role == ROLE_DSK - can only update themself and Hoppers
 	// they cannot update other desk or manager role users
 	if sess.Role == psession.ROLE_DSK && sess.User != userid {
-		fmt.Println("update_staff_hours:FIX role is desk: check that userid role is bellhop")
 		rMap, err = database.DbwRead(StaffEntity, userid)
 		if err != nil {
 			log.Println("UpdateEmployeeHours:ERROR: No staff with name=", userid, " : err=", err)
@@ -653,7 +628,6 @@ func UpdateEmployeeHours(userid string, clockin bool, expHours int, sess *psessi
 	if clockin {
 		cnt := (*rMap)["ClockInCnt"].(int)
 		(*rMap)["ClockInCnt"] = cnt + 1
-		fmt.Println("UpdEmpHrs:FIX: clockin: map=", (*rMap))
 		// how to handle if desk didnt clockout bell hop
 		// - so if old clockin is > clockout means the hop was not clocked out
 		if okDur && duration.Hours() < 0 { // dur = clockout - clockin
@@ -683,18 +657,6 @@ func UpdateEmployeeHours(userid string, clockin bool, expHours int, sess *psessi
 	} else {
 		cnt := (*rMap)["ClockOutCnt"].(int)
 		(*rMap)["ClockOutCnt"] = cnt + 1
-		fmt.Println("UpdEmpHrs:FIX: clockout: map=", (*rMap))
-		/* FIX clockout staff
-		if nowMinusLastClockin > lastExpHrs {
-			// did the staff member not get clocked out?
-			total := (*rMap)["TotalExpectedHours"].(float64) + lastExpHrs
-			(*rMap)["TotalExpectedHours"] = total
-		} else {
-			// did staff member get clocked out early?
-			total := (*rMap)["TotalExpectedHours"].(float64) + nowMinusLastClockin
-			(*rMap)["TotalExpectedHours"] = total
-		} */
-
 		(*rMap)["LastClockoutTime"] = nowStr
 		// clocked out so recalc the total hours
 		if okIn {
@@ -707,7 +669,6 @@ func UpdateEmployeeHours(userid string, clockin bool, expHours int, sess *psessi
 		}
 	}
 
-	fmt.Println("UpdEmpHrs:FIX: update=", (*rMap))
 	err = database.DbwUpdate(StaffHoursEntity, key, rMap)
 	if err != nil {
 		log.Println("UpdateEmployeeHours:ERROR: Failed to update db for total hours for userid=", userid, " : err=", err)

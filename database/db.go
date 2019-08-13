@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -19,7 +18,6 @@ import (
 
 type CDBInterface struct {
 	DBInterface
-	// FIX dbimpl *couchdb.Server
 	baseUrl string
 	// cookies []*http.Cookie
 	//authCookie *http.Header
@@ -60,38 +58,14 @@ func (dbint *CDBInterface) Init(cfg *config.PinoyConfig) error {
 	dbint.client = client
 
 	resp, err := client.Do(req)
-	// FIX svr, err := couchdb.NewServer("http://root:password@localhost:5984/")
 	// curl -c cdbcookies -H "Accept: application/json" -H "Content-Type: application/x-www-form-urlencoded"  http://localhost:5984/_session -X POST -d "name=wsruler&password=oneringtorule"
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	/* FIX
-	cookies := resp.Cookies()
-	//dbint.cookies = cookies // []*http.Cookie
-	//cookie := cookies.Get("Set-Cookie")
-	if cookies != nil {
-		for _, cookie := range cookies {
-			if cookie != nil && cookie.Name == "Set-Cookie" {
-				// HAVE: the auth session cookie
-				token := cookie.Value
-				//token := strings.Split(tokenPart, "=")[1]
-				cookieAuthHeader := &http.Header{}
-				cookieAuthHeader.Add("Cookie", fmt.Sprintf("AuthSession=%s", token))
-				dbint.authCookie = cookieAuthHeader
-				break
-			}
-		}
-	} */
 
-	//fmt.Println("response Status:", resp.Status)
-	//fmt.Println("response Headers:", resp.Header)
+	ioutil.ReadAll(resp.Body)
 
-	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("db.init:FIX: response Body:", string(body))
-
-	//var dbint DBInterface
-	//dbint.dbimpl = svr
 	return nil
 }
 
@@ -127,7 +101,6 @@ func (dbi *CDBInterface) Create(entity, key string, val interface{}) (*map[strin
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("FIX db.create: ", result)
 
 	return &result, nil
 }
@@ -153,13 +126,10 @@ func (dbi *CDBInterface) Read(entity, id string) (*map[string]interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	//log.Println("FIX read: ", result)
 
 	return &result, nil
 }
 
-//func (dbi *DBInterface) ReadAll(entity string) (*map[string]interface{}, error) {
-//func (dbi *DBInterface) ReadAll(entity string) ([]string, error) {
 func (dbi *CDBInterface) ReadAll(entity string) ([]interface{}, error) {
 	// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/_all_docs
 	url := dbi.baseUrl + entity + "/_all_docs?include_docs=true"
@@ -189,32 +159,21 @@ func (dbi *CDBInterface) ReadAll(entity string) ([]interface{}, error) {
 		return nil, err
 	}
 
-	//log.Println("FIX readall result: ", result)
 	var rows []interface{}
 	rows = result["rows"].([]interface{})
-	//log.Println("FIX readall rows: ", rows)
-	//return rows, nil
 
-	//ids := make([]string, len(rows))
 	docs := make([]interface{}, len(rows))
 	for k, v := range rows {
 		vmap := v.(map[string]interface{})
 		docs[k] = vmap["doc"]
-		//ids[k] = vmap["id"].(string)
 	}
 	return docs, nil
-	//log.Println("FIX readall rows: ", result["rows"])
-	//log.Println("FIX readall ids: ", ids)
-
-	//return ids, nil
-	//return &result, nil
 }
 
 // return the new revision
 func (dbi *CDBInterface) Update(entity, id, rev string, val map[string]interface{}) (string, error) {
 	// curl --cookie "cdbcookies" -H "Content-Type: application/json" http://localhost:5984/stuff/592ccd646f8202691a77f1b1c5004496 -X PUT -d '{"name":"sam","age":42,"_rev":"1-3f12b5828db45fda239607bf7785619a"}'
 	url := dbi.baseUrl + entity + "/" + id
-	//val["_id"] = id
 	val["_rev"] = rev
 	bytesRepresentation, err := json.Marshal(val)
 	if err != nil {
@@ -237,8 +196,6 @@ func (dbi *CDBInterface) Update(entity, id, rev string, val map[string]interface
 		return "", err
 	}
 	// ex: map[ok:true id:3d_shapes rev:28-d2bc68f0f0132cbb483ee1196e3c482e]
-	fmt.Println("FIX db.put: ", result)
-	// FIX TODO get the status from the result
 	rev = result["rev"].(string)
 	return rev, err
 }
@@ -261,12 +218,10 @@ func (dbi *CDBInterface) Delete(entity, id, rev string) error {
 
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
-	fmt.Println("FIX db.delete: ", result)
 	return checkResultError(&result, err)
 }
 
 func (dbi *CDBInterface) Find(entity, field, value string) ([]interface{}, error) {
-	// TODO find
 	// curl -v -H "Content-Type: application/json" --cookie "cdbcookies" http://localhost:5984/testxyz/_find -X POST -d $SEL
 	// SEL='{"selector":{"shape":{"$eq":"pyramid"}}}'
 	/*
@@ -278,7 +233,6 @@ func (dbi *CDBInterface) Find(entity, field, value string) ([]interface{}, error
 				return (List<Object>)retObj;
 			} */
 	entity = entity + "/_find"
-	// TODO change how to make json for val
 	//val := `{"selector":{"` + field + `":{"$eq":"` + value + `"}}}`
 	eqm := map[string]string{"$eq": value} // make(map[string]interface{})
 	//eqm["$eq"] = value
@@ -286,10 +240,6 @@ func (dbi *CDBInterface) Find(entity, field, value string) ([]interface{}, error
 	//fldm[field] = eqm
 	sel := map[string]interface{}{"selector": fldm} // make(map[string]interface{})
 	//sel["selector"] = fldm
-	fmt.Println("FIX Find: entity=", entity, " :val=", sel)
-	// FIX var ret *map[string]interface{}
-	var err error
-	//ret, err = dbi.Create(entity, "", val)
 	url := dbi.baseUrl + entity
 	bytesRepresentation, err := json.Marshal(sel)
 	if err != nil {
@@ -305,7 +255,6 @@ func (dbi *CDBInterface) Find(entity, field, value string) ([]interface{}, error
 
 	resp, err := dbi.client.Do(request)
 	if err != nil {
-		fmt.Println("FIX find: client res=", resp, " : err=", err)
 		return nil, err
 	}
 
@@ -315,8 +264,6 @@ func (dbi *CDBInterface) Find(entity, field, value string) ([]interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("FIX db.find: res=", result)
-	//return (*ret)["docs"].([]interface{}), nil
 	return result["docs"].([]interface{}), nil
 }
 

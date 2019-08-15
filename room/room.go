@@ -35,11 +35,11 @@ type RoomDetailEntry struct {
 func Rooms(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 	sessDetails := psession.Get_sess_details(r, "Rooms", "Rooms page to Pinoy Lodge")
-    if sessDetails.Sess.Role != psession.ROLE_MGR {
-        sessDetails.Sess.Message = "No Permissions"
-        _ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
-        return
-    }
+	if sessDetails.Sess.Role != psession.ROLE_MGR {
+		sessDetails.Sess.Message = "No Permissions"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		return
+	}
 	if r.Method != "GET" {
 		log.Println("rooms: bad http method: should only be a GET")
 		http.Error(w, "Bad request", http.StatusBadRequest)
@@ -49,8 +49,8 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/rooms.gtpl", "static/header.gtpl")
 	if err != nil {
 		log.Println("rooms: Failed to parse template: err=", err)
-        sessDetails.Sess.Message = "Internal error"
-        _ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		sessDetails.Sess.Message = "Internal error"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		return
 	}
 
@@ -97,18 +97,16 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 	sessDetails := psession.Get_sess_details(r, "Update Room", "Update Room page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
-        sessDetails.Sess.Message = "No Permissions"
-        _ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
-        return
-    }
+		sessDetails.Sess.Message = "No Permissions"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		return
+	}
 
 	if r.Method == "GET" {
 
 		room := ""
 		rooms, ok := r.URL.Query()["room_num"]
-		if !ok || len(rooms[0]) < 1 {
-			log.Println("upd_room: missing Url param: room")
-		} else {
+		if ok && len(rooms[0]) > 0 {
 			room = rooms[0]
 		}
 
@@ -216,13 +214,13 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 	} else {
 		r.ParseForm()
 
-		num_beds := r.Form["num_beds"]
-		room_num := r.Form["room_num"]
-		bed_size := r.Form["bed_size"]
-		room_rate := r.Form["room_rate"]
+		numBeds := r.Form["num_beds"]
+		roomNum := r.Form["room_num"]
+		bedSize := r.Form["bed_size"]
+		roomRate := r.Form["room_rate"]
 
 		// validate incoming form fields
-		if len(num_beds[0]) == 0 || len(room_num[0]) == 0 || len(bed_size[0]) == 0 || len(room_rate[0]) == 0 {
+		if len(numBeds[0]) == 0 || len(roomNum[0]) == 0 || len(bedSize[0]) == 0 || len(roomRate[0]) == 0 {
 			log.Println("upd_room:POST: Missing form data")
 			sessDetails.Sess.Message = `Missing required fields in Update Room Rates`
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
@@ -233,29 +231,29 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		update := true
 		var rMap *map[string]interface{}
 		var err error
-		rMap, err = database.DbwRead(RoomsEntity, room_num[0])
+		rMap, err = database.DbwRead(RoomsEntity, roomNum[0])
 		if err != nil {
-			log.Println("upd_room:POST: room num=", room_num[0], " :err=", err)
+			log.Println("upd_room:POST: room num=", roomNum[0], " :err=", err)
 
 			// no such entry so the room must be new
 			rm := make(map[string]interface{})
 			rMap = &rm
-			(*rMap)["RoomNum"] = room_num[0]
-			(*rMap)["NumBeds"] = num_beds[0]
-			(*rMap)["RateClass"] = room_rate[0]
-			(*rMap)["BedSize"] = bed_size[0]
+			(*rMap)["RoomNum"] = roomNum[0]
+			(*rMap)["NumBeds"] = numBeds[0]
+			(*rMap)["RateClass"] = roomRate[0]
+			(*rMap)["BedSize"] = bedSize[0]
 			update = false
-			key = room_num[0]
+			key = roomNum[0]
 		} else {
-			(*rMap)["NumBeds"] = num_beds[0]
-			(*rMap)["RateClass"] = room_rate[0]
-			(*rMap)["BedSize"] = bed_size[0]
+			(*rMap)["NumBeds"] = numBeds[0]
+			(*rMap)["RateClass"] = roomRate[0]
+			(*rMap)["BedSize"] = bedSize[0]
 		}
 
 		err = database.DbwUpdate(RoomsEntity, key, rMap)
 		if err != nil {
-			log.Println("upd_room:POST: Failed to create or update room=", room_num[0], " :err=", err)
-			sessDetails.Sess.Message = "Failed to create or update room="+room_num[0]
+			log.Println("upd_room:POST: Failed to create or update room=", roomNum[0], " :err=", err)
+			sessDetails.Sess.Message = "Failed to create or update room=" + roomNum[0]
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
 		}
@@ -266,30 +264,33 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		key = ""
 		if update {
 			//_, err = PDb.Update(RoomsEntity, (*rMap)["_id"].(string), (*rMap)["_rev"].(string), (*rMap))
-			roomStatus, err = database.DbwRead(RoomStatusEntity, room_num[0])
+			roomStatus, err = database.DbwRead(RoomStatusEntity, roomNum[0])
 			if err == nil {
-				(*roomStatus)["Rate"] = room_rate[0]
+				(*roomStatus)["Rate"] = roomRate[0]
 			}
 		}
 		if roomStatus == nil {
 			// create the room status record for this room
 			rs := make(map[string]interface{})
-			rs["RoomNum"] = room_num[0]
-			rs["Status"] = "open"
+			rs["RoomNum"] = roomNum[0]
+			rs["Status"] = OpenStatus
 			rs["GuestInfo"] = ""
 			rs["CheckinTime"] = ""
-			rs["Rate"] = room_rate[0]
+			rs["CheckoutTime"] = ""
+			rs["Rate"] = roomRate[0]
 			roomStatus = &rs
-			key = room_num[0]
+			key = roomNum[0]
 		}
 		err = database.DbwUpdate(RoomStatusEntity, key, roomStatus)
 		if err != nil {
-			log.Println("upd_room:POST: Failed to create or update room status=", room_num[0], " :err=", err)
+			log.Println("upd_room:POST: Failed to create or update room status=", roomNum[0], " :err=", err)
 
-			sessDetails.Sess.Message = "Failed to update room status: room=" + room_num[0]
+			sessDetails.Sess.Message = "Failed to update room status: room=" + roomNum[0]
 			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
 		}
+		// update in-memory room_status
+		PutNewRoomStatus(*roomStatus)
 
 		http.Redirect(w, r, "/manager/rooms", http.StatusFound)
 	}

@@ -1,17 +1,17 @@
 #!/bin/bash
 #
-# This is the init.d script for the couchdb service
+# This is the init.d script for the pinoy service
 #
 ### BEGIN INIT INFO
-# Provides:          couchdb
+# Provides:          pinoy
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Should-Start:      $network $time
 # Should-Stop:       $network $time
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start and stop the couchdb database server daemon
-# Description:       Controls the main couchdb database server daemon "couchdb"
+# Short-Description: Start and stop the pinoy server daemon
+# Description:       Controls the main pinoy server daemon "pinoy"
 ### END INIT INFO
 #
 set -e
@@ -20,26 +20,26 @@ ${DEBIAN_SCRIPT_DEBUG:+ set -v -x}
 
 . /lib/lsb/init-functions
 
-CNAME=pinoy-cdb-1
-
 SELF=$(cd $(dirname $0); pwd -P)/$(basename $0)
 
 # priority can be overriden and "-s" adds output to stderr
-ERR_LOGGER="logger -p daemon.err -t couchdb"
+ERR_LOGGER="logger -p daemon.err -t pinoy"
 
 # Safeguard (relative paths, core dumps..)
 cd /
 umask 077
 
+export HOME=/etc/pinoy/
+
 sanity_checks() {
   # check for config file
-  #if [ ! -r /etc/mysql/my.cnf ]; then
-  #  log_warning_msg "$0: WARNING: /etc/mysql/my.cnf cannot be read. See README.Debian.gz"
-  #  echo                "WARNING: /etc/mysql/my.cnf cannot be read. See README.Debian.gz" | $ERR_LOGGER
-  #fi
+  if [ ! -r /etc/pinoy/config.json ]; then
+    log_warning_msg "$0: WARNING: /etc/pinoy/config.json cannot be read"
+    echo                "WARNING: /etc/pinoy/config.json cannot be read" | $ERR_LOGGER
+  fi
 
   # check for diskspace shortage
-  datadir=/var/opt/couchdb/
+  datadir=/var/log/pinoy/
   if LC_ALL=C BLOCKSIZE= df --portability $datadir/. | tail -n 1 | awk '{ exit ($4>4096) }'; then
     log_failure_msg "$0: ERROR: The partition with $datadir is too full!"
     echo                "ERROR: The partition with $datadir is too full!" | $ERR_LOGGER
@@ -56,7 +56,7 @@ sanity_checks() {
 server_status () {
 
     ps_alive=0
-    docker ps | grep pinoy
+    ps -eaf | grep "/usr/bin/pinoy" | grep -v grep
     RET=$?
     if [ $RET -eq 0 ]; then
         # running
@@ -64,7 +64,7 @@ server_status () {
     fi
 
     ping_alive=0
-    ping_output=`curl http://localhost:5984/`
+    ping_output=`curl http://localhost:8080/`
     RET=$?
     if [ $RET -eq 0 ]; then
         # responsive
@@ -94,13 +94,14 @@ case "${1:-''}" in
   'start')
     sanity_checks;
     # Start daemon
-    log_daemon_msg "Starting couchdb database server" "couchdb"
+    log_daemon_msg "Starting pinoy server" "pinoy"
     if server_status check_alive nowarn; then
        log_progress_msg "already running"
        log_end_msg 0
     else
-        # Start couchdb 
-        docker run -dit --restart unless-stopped -p 5984:5984 -p 5986:5986 -v /var/opt/couchdb:/var/opt/couchdb $CNAME
+        # Start pinoy 
+        cd $HOME
+        /usr/bin/pinoy &
 
         for i in $(seq 1 10); do
             sleep 1
@@ -108,43 +109,39 @@ case "${1:-''}" in
             log_progress_msg "."
         done
         if server_status check_alive warn; then
-                log_end_msg 0
-            # Now start mysqlcheck or whatever the admin wants.
-            #output=$(/etc/mysql/debian-start)
-        #[ -n "$output" ] && log_action_msg "$output"
+            log_end_msg 0
         else
             log_end_msg 1
-            log_failure_msg "Please take a look at the syslog"
+            log_failure_msg "Please take a look at the syslog or /var/log/pinoy"
         fi
     fi
     ;;
 
   'stop')
-    log_daemon_msg "Stopping couchdb server" "couchdb"
+    log_daemon_msg "Stopping pinoy server" "pinoy"
     if ! server_status check_dead nowarn; then
       set +e
-      CONTID=`docker ps | grep pinoy | awk '{print $1}'`
-      docker stop -t 30 $CONTID
+      ID=`ps -eaf | grep "/usr/bin/pinoy" | grep -v grep | awk '{print $2}'`
+      kill $ID
       r=$?
-      #shutdown_out=`$MYADMIN shutdown 2>&1`; r=$?
       set -e
       if [ "$r" -ne 0 ]; then
         log_end_msg 1
-        [ "$VERBOSE" != "no" ] && log_failure_msg "Error: failed to shutdown couchdb"
-        log_daemon_msg "Killing couchdb server by signal" "couchdb"
-        killall -15 dockerd
+        [ "$VERBOSE" != "no" ] && log_failure_msg "Error: failed to shutdown pinoy"
+        log_daemon_msg "Killing pinoy server by signal" "pinoy"
+        killall -15 /usr/bin/pinoy
         server_down=
         for i in 1 2 3 4 5 6 7 8 9 10; do
               sleep 1
               if server_status check_dead nowarn; then server_down=1; break; fi
             done
-          if test -z "$server_down"; then killall -9 dockerd; fi
+          if test -z "$server_down"; then killall -9 /usr/bin/pinoy; fi
       fi
     fi
 
     if ! server_status check_dead warn; then
       log_end_msg 1
-      log_failure_msg "Please stop couchdb manually"
+      log_failure_msg "Please stop pinoy manually"
       exit -1
     else
       log_end_msg 0
@@ -157,7 +154,7 @@ case "${1:-''}" in
     ;;
 
   'reload'|'force-reload')
-    log_daemon_msg "Reloading couchdb server" "couchdb"
+    log_daemon_msg "Reloading pinoy server" "pinoy"
     set +e; $SELF stop; set -e
     $SELF start 
     log_end_msg 0
@@ -165,9 +162,9 @@ case "${1:-''}" in
 
   'status')
     if server_status check_alive nowarn; then
-      log_action_msg "couchdb running"
+      log_action_msg "pinoy running"
     else
-      log_action_msg "couchdb is stopped."
+      log_action_msg "pinoy is stopped"
       exit 3
     fi
       ;;

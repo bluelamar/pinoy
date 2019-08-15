@@ -2,10 +2,13 @@
 
 # run this script once after first creation of the DB
 
-# get a session cookie
-curl -c cdbcookies -H "Accept: application/json" -H "Content-Type: application/x-www-form-urlencoded"  http://localhost:5984/_session -X POST -d "name=joker&password=takeaguess"
+DBUSERNAME=$1
+DBPASSWD=$2
 
-# run is single node mode
+# get a session cookie
+curl -c cdbcookies -H "Accept: application/json" -H "Content-Type: application/x-www-form-urlencoded"  http://localhost:5984/_session -X POST -d "name=$DBUSERNAME&password=$DBPASSWD"
+
+# run in single node mode
 # http://docs.couchdb.org/en/stable/setup/single-node.html
 curl -v --cookie "cdbcookies" http://localhost:5984/_users -X PUT
 curl -v --cookie "cdbcookies" http://localhost:5984/_replicator -X PUT

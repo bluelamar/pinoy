@@ -5,6 +5,26 @@ Pinoy Lodge Application
 
 **pinoy** will load config from /etc/pinoy/config.json
 
+### Logging
+
+**LogOutput** takes 1 of these values: file, stderr, stdout
+
+If **file** is specified, then set **LogFile** to the explicit file path.
+
+Example:
+```
+  "LogOutput": "file",
+  "LogFile": "/var/log/pinoy/pinoy.log",
+```
+
+Else set **LogFile** to the empty string **""**
+
+Example: 
+```
+  "LogOutput": "stderr",
+  "LogFile": "",
+```
+
 ## Log Rotation:
 
 Place logrotate config files in /etc/logrotate.d/

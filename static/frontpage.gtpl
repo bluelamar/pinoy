@@ -44,7 +44,6 @@ roomStateTimer();
       <li><a href="/manager/food">Add or Update Food Items</a></li>
       <li><a href="/manager/svc_stats">Server Statistics</a></li>
       {{end}}
-      <li class="mobile-nav-only"><a href="https://eventlogue.net/">Main Site</a></li>
     </ul>
   </nav>
 

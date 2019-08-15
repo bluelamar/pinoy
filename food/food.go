@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/bluelamar/pinoy/misc"
 	"github.com/bluelamar/pinoy/psession"
 )
 
@@ -31,10 +32,17 @@ type FoodRecord struct {
 
 func Food(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("food:method:", r.Method)
+	misc.IncrRequestCnt()
+	sessDetails := psession.Get_sess_details(r, "Food Items", "Food Item page to Pinoy Lodge")
 	if r.Method != "GET" {
 		fmt.Printf("food: bad http method: should only be a GET\n")
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
+	} else {
+		// FIX TODO remove this once food functionality is ready
+		sessDetails.Sess.Message = "Not Ready Yet"
+        _ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+        return
 	}
 
 	room := ""
@@ -51,7 +59,6 @@ func Food(w http.ResponseWriter, r *http.Request) {
 		log.Println("food: Failed to parse templaste: err=", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
 	} else {
-		sessDetails := psession.Get_sess_details(r, "Food Items", "Food Item page to Pinoy Lodge")
 		a1 := FoodItem{
 			Item:  "San Miguel beer",
 			Size:  "large",
@@ -84,11 +91,19 @@ func Food(w http.ResponseWriter, r *http.Request) {
 
 func UpdFood(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("upd_food:method:", r.Method)
+	misc.IncrRequestCnt()
+	sessDetails := psession.Get_sess_details(r, "Update Food Items", "Update Food Item page to Pinoy Lodge")
 	if r.Method != "POST" {
 		log.Println("upd_food: bad http method: should only be a POST")
 		http.Error(w, "Bad request", http.StatusBadRequest) // FIX
 		return
+	} else {
+		// FIX TODO remove this once food functionality is ready
+		sessDetails.Sess.Message = "Not Ready Yet"
+        _ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+        return
 	}
+
 	r.ParseForm()
 	for k, v := range r.Form { // FIX
 		fmt.Println("key:", k)
@@ -112,6 +127,15 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 
 func Purchase(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("purchase:method:", r.Method)
+	todoFIX := true
+	misc.IncrRequestCnt()
+	sessDetails := psession.Get_sess_details(r, "Purchase Food Items", "Purchase Food Item page to Pinoy Lodge")
+	if todoFIX {
+		// FIX TODO remove this once food functionality is ready
+		sessDetails.Sess.Message = "Not Ready Yet"
+        _ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+        return
+	}
 	// item size room
 	// for get - prefill fields based on query parameters
 	if r.Method == "GET" {

@@ -135,7 +135,7 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 
 		hopper := r.Form["hopper"]
 		hopperID := r.Form["user_id"]
-		bell_hop_pin := r.Form["bell_hop_pin"]
+		bellHopPin := r.Form["bell_hop_pin"]
 		room_num := r.Form["room_num"]
 		repeat := r.Form["repeat"] // if true then can repeat upon failure
 
@@ -171,7 +171,7 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 		// key= UserID + ":" + Room + ":" + TimeStamp
 		*/
 		// use hash for user password
-		pwd := config.HashIt(bell_hop_pin[0])
+		pwd := config.HashIt(bellHopPin[0])
 		if strings.Compare(pwd, passwd.(string)) != 0 {
 			// invalid match
 			log.Println("room_hop: room attendent pin not a match=", hopper[0], " : room=", room_num[0])

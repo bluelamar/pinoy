@@ -25,10 +25,10 @@ type CDBInterface struct {
 }
 
 func NewCDatabase() CDBInterface {
-	dbint := CDBInterface{}
-	return dbint
+	pDbInt := CDBInterface{}
+	return pDbInt
 }
-func (dbint *CDBInterface) Init(cfg *config.PinoyConfig) error {
+func (pDbInt *CDBInterface) Init(cfg *config.PinoyConfig) error {
 	pwd, err := cfg.DecryptDbPwd()
 	if err != nil {
 		return err
@@ -37,8 +37,8 @@ func (dbint *CDBInterface) Init(cfg *config.PinoyConfig) error {
 	port := strconv.Itoa(cfg.DbPort)
 	url := cfg.DbUrl + ":" + port + "/"
 	//var dbint CDBInterface
-	dbint.baseUrl = url
-	url = dbint.baseUrl + "_session"
+	pDbInt.baseUrl = url
+	url = pDbInt.baseUrl + "_session"
 	loginCreds := "name=" + cfg.DbUser + "&password=" + pwd
 	var payLoad = []byte(loginCreds)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payLoad))
@@ -55,7 +55,7 @@ func (dbint *CDBInterface) Init(cfg *config.PinoyConfig) error {
 		Timeout: timeout,
 	}
 
-	dbint.client = client
+	pDbInt.client = client
 
 	resp, err := client.Do(req)
 	// curl -c cdbcookies -H "Accept: application/json" -H "Content-Type: application/x-www-form-urlencoded"  http://localhost:5984/_session -X POST -d "name=wsruler&password=oneringtorule"
@@ -69,9 +69,9 @@ func (dbint *CDBInterface) Init(cfg *config.PinoyConfig) error {
 	return nil
 }
 
-func (dbi *CDBInterface) Create(entity, key string, val interface{}) (*map[string]interface{}, error) {
+func (pDbInt *CDBInterface) Create(entity, key string, val interface{}) (*map[string]interface{}, error) {
 	// create: POST -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/link/${ENTITY} -d "${DATA}"
-	url := dbi.baseUrl + entity
+	url := pDbInt.baseUrl + entity
 	valMap := val.(map[string]interface{})
 	if key != "" {
 		valMap["_id"] = key
@@ -89,7 +89,7 @@ func (dbi *CDBInterface) Create(entity, key string, val interface{}) (*map[strin
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
 
-	resp, err := dbi.client.Do(request)
+	resp, err := pDbInt.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -105,9 +105,9 @@ func (dbi *CDBInterface) Create(entity, key string, val interface{}) (*map[strin
 	return &result, nil
 }
 
-func (dbi *CDBInterface) Read(entity, id string) (*map[string]interface{}, error) {
+func (pDbInt *CDBInterface) Read(entity, id string) (*map[string]interface{}, error) {
 	// curl -v --cookie "cdbcookies" http://localhost:5984/dblnk/19b74cd4
-	url := dbi.baseUrl + entity + "/" + id
+	url := pDbInt.baseUrl + entity + "/" + id
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (dbi *CDBInterface) Read(entity, id string) (*map[string]interface{}, error
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
 
-	resp, err := dbi.client.Do(request)
+	resp, err := pDbInt.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -130,9 +130,9 @@ func (dbi *CDBInterface) Read(entity, id string) (*map[string]interface{}, error
 	return &result, nil
 }
 
-func (dbi *CDBInterface) ReadAll(entity string) ([]interface{}, error) {
+func (pDbInt *CDBInterface) ReadAll(entity string) ([]interface{}, error) {
 	// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/_all_docs
-	url := dbi.baseUrl + entity + "/_all_docs?include_docs=true"
+	url := pDbInt.baseUrl + entity + "/_all_docs?include_docs=true"
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func (dbi *CDBInterface) ReadAll(entity string) ([]interface{}, error) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
 
-	resp, err := dbi.client.Do(request)
+	resp, err := pDbInt.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -171,9 +171,9 @@ func (dbi *CDBInterface) ReadAll(entity string) ([]interface{}, error) {
 }
 
 // return the new revision
-func (dbi *CDBInterface) Update(entity, id, rev string, val map[string]interface{}) (string, error) {
+func (pDbInt *CDBInterface) Update(entity, id, rev string, val map[string]interface{}) (string, error) {
 	// curl --cookie "cdbcookies" -H "Content-Type: application/json" http://localhost:5984/stuff/592ccd646f8202691a77f1b1c5004496 -X PUT -d '{"name":"sam","age":42,"_rev":"1-3f12b5828db45fda239607bf7785619a"}'
-	url := dbi.baseUrl + entity + "/" + id
+	url := pDbInt.baseUrl + entity + "/" + id
 	val["_rev"] = rev
 	bytesRepresentation, err := json.Marshal(val)
 	if err != nil {
@@ -184,7 +184,7 @@ func (dbi *CDBInterface) Update(entity, id, rev string, val map[string]interface
 		return "", err
 	}
 
-	resp, err := dbi.client.Do(request)
+	resp, err := pDbInt.client.Do(request)
 	if err != nil {
 		return "", err
 	}
@@ -200,10 +200,10 @@ func (dbi *CDBInterface) Update(entity, id, rev string, val map[string]interface
 	return rev, err
 }
 
-func (dbi *CDBInterface) Delete(entity, id, rev string) error {
+func (pDbInt *CDBInterface) Delete(entity, id, rev string) error {
 	// curl -v --cookie "cdbcookies" http://localhost:5984/testxyz/f00dc0ba83aec8f560bd7c8036000c0a?rev=1-e1e73b2d88ada8d8f636cb13f2c06b71 -X DELETE
 
-	url := dbi.baseUrl + entity + "/" + id + "?rev=" + rev
+	url := pDbInt.baseUrl + entity + "/" + id + "?rev=" + rev
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
@@ -211,7 +211,7 @@ func (dbi *CDBInterface) Delete(entity, id, rev string) error {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
 
-	resp, err := dbi.client.Do(request)
+	resp, err := pDbInt.client.Do(request)
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func (dbi *CDBInterface) Delete(entity, id, rev string) error {
 	return checkResultError(&result, err)
 }
 
-func (dbi *CDBInterface) Find(entity, field, value string) ([]interface{}, error) {
+func (pDbInt *CDBInterface) Find(entity, field, value string) ([]interface{}, error) {
 	// curl -v -H "Content-Type: application/json" --cookie "cdbcookies" http://localhost:5984/testxyz/_find -X POST -d $SEL
 	// SEL='{"selector":{"shape":{"$eq":"pyramid"}}}'
 	/*
@@ -240,7 +240,7 @@ func (dbi *CDBInterface) Find(entity, field, value string) ([]interface{}, error
 	//fldm[field] = eqm
 	sel := map[string]interface{}{"selector": fldm} // make(map[string]interface{})
 	//sel["selector"] = fldm
-	url := dbi.baseUrl + entity
+	url := pDbInt.baseUrl + entity
 	bytesRepresentation, err := json.Marshal(sel)
 	if err != nil {
 		return nil, err
@@ -253,7 +253,7 @@ func (dbi *CDBInterface) Find(entity, field, value string) ([]interface{}, error
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
 
-	resp, err := dbi.client.Do(request)
+	resp, err := pDbInt.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (dbi *CDBInterface) Find(entity, field, value string) ([]interface{}, error
 	return result["docs"].([]interface{}), nil
 }
 
-func (pDb *CDBInterface) DbwDelete(entity string, rMap *map[string]interface{}) error {
+func (pDbInt *CDBInterface) DbwDelete(entity string, rMap *map[string]interface{}) error {
 	id, ok := (*rMap)["_id"]
 	if !ok {
 		return errors.New("cdb:missing required id")
@@ -276,19 +276,19 @@ func (pDb *CDBInterface) DbwDelete(entity string, rMap *map[string]interface{}) 
 	if !ok {
 		return errors.New("cdb:missing required rev")
 	}
-	return pDb.Delete(entity, id.(string), rev.(string))
+	return pDbInt.Delete(entity, id.(string), rev.(string))
 }
 
 /*
  * Determines to update if _id is present and key is empty, else create entry
  */
-func (pDb *CDBInterface) DbwUpdate(entity, key string, rMap *map[string]interface{}) error {
+func (pDbInt *CDBInterface) DbwUpdate(entity, key string, rMap *map[string]interface{}) error {
 	var err error
 	id, ok := (*rMap)["_id"]
 	if ok && key == "" {
-		_, err = pDb.Update(entity, id.(string), (*rMap)["_rev"].(string), (*rMap))
+		_, err = pDbInt.Update(entity, id.(string), (*rMap)["_rev"].(string), (*rMap))
 	} else {
-		_, err = pDb.Create(entity, key, (*rMap))
+		_, err = pDbInt.Create(entity, key, (*rMap))
 	}
 
 	return err
@@ -304,7 +304,7 @@ func checkResultError(result *map[string]interface{}, err error) error {
 	msg, ok := (*result)["error"]
 	if ok {
 		// CouchDb returned an error msg
-		log.Println("db:check: result contains error=", msg)
+		// log.Println("db:check: result contains error=", msg)
 		return errors.New(msg.(string))
 	}
 	return nil

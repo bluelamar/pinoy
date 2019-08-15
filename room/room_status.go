@@ -1,6 +1,7 @@
 package room
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -52,14 +53,53 @@ type RegisterData struct {
 }
 
 // keep all room status in memory for fast lookup
-var RoomStateCurrent map[string]RoomState = make(map[string]RoomState)
+var roomStateCurrent map[string]RoomState = make(map[string]RoomState)
+var mutex sync.Mutex
+
+func xlateToRoomStatus(val map[string]interface{}) *RoomState {
+	rn := ""
+	if str, exists := val["RoomNum"]; exists {
+		rn = str.(string)
+	} else {
+		return nil
+	}
+	st := ""
+	if str, exists := val["Status"]; exists {
+		st = str.(string)
+	}
+	gi := ""
+	if str, exists := val["GuestInfo"]; exists {
+		gi = str.(string)
+	}
+	ci := ""
+	if str, exists := val["CheckinTime"]; exists {
+		ci = str.(string)
+	}
+	co := ""
+	if str, exists := val["CheckoutTime"]; exists {
+		co = str.(string)
+	}
+	rt := ""
+	if str, exists := val["Rate"]; exists {
+		rt = str.(string)
+	}
+	rs := RoomState{
+		RoomNum:      rn,
+		Status:       st,
+		GuestInfo:    gi,
+		CheckinTime:  ci,
+		CheckoutTime: co,
+		Rate:         rt,
+	}
+	return &rs
+}
 
 func loadRoomsState() error {
 	var once sync.Once
-	var err error = nil
+	var err error
 	onceBody := func() {
 		var roomStati []interface{}
-		if len(RoomStateCurrent) > 0 {
+		if len(roomStateCurrent) > 0 {
 			// other task already loaded so nothing to do
 			return
 		}
@@ -71,52 +111,71 @@ func loadRoomsState() error {
 		var roomsMap map[string]RoomState = make(map[string]RoomState)
 		for _, v := range roomStati {
 			val := v.(map[string]interface{})
-			rn := ""
-			if str, exists := val["RoomNum"]; exists {
-				rn = str.(string)
-			} else {
+			rs := xlateToRoomStatus(val)
+			if rs == nil {
 				continue
 			}
-			st := ""
-			if str, exists := val["Status"]; exists {
-				st = str.(string)
-			}
-			gi := ""
-			if str, exists := val["GuestInfo"]; exists {
-				gi = str.(string)
-			}
-			ci := ""
-			if str, exists := val["CheckinTime"]; exists {
-				ci = str.(string)
-			}
-			co := ""
-			if str, exists := val["CheckoutTime"]; exists {
-				co = str.(string)
-			}
-			rt := ""
-			if str, exists := val["Rate"]; exists {
-				rt = str.(string)
-			}
-			rs := RoomState{
-				RoomNum:      rn,
-				Status:       st,
-				GuestInfo:    gi,
-				CheckinTime:  ci,
-				CheckoutTime: co,
-				Rate:         rt,
-			}
-			roomsMap[rn] = rs
+			rn := val["RoomNum"].(string)
+			/*
+				rn := ""
+				if str, exists := val["RoomNum"]; exists {
+					rn = str.(string)
+				} else {
+					continue
+				}
+				st := ""
+				if str, exists := val["Status"]; exists {
+					st = str.(string)
+				}
+				gi := ""
+				if str, exists := val["GuestInfo"]; exists {
+					gi = str.(string)
+				}
+				ci := ""
+				if str, exists := val["CheckinTime"]; exists {
+					ci = str.(string)
+				}
+				co := ""
+				if str, exists := val["CheckoutTime"]; exists {
+					co = str.(string)
+				}
+				rt := ""
+				if str, exists := val["Rate"]; exists {
+					rt = str.(string)
+				}
+				rs := RoomState{
+					RoomNum:      rn,
+					Status:       st,
+					GuestInfo:    gi,
+					CheckinTime:  ci,
+					CheckoutTime: co,
+					Rate:         rt,
+				} */
+			roomsMap[rn] = *rs
 		}
-		RoomStateCurrent = roomsMap
+		roomStateCurrent = roomsMap
 	}
 	once.Do(onceBody)
 	return err
 }
 
+func PutNewRoomStatus(roomStatus map[string]interface{}) error {
+	rs := xlateToRoomStatus(roomStatus)
+	if rs == nil {
+		log.Println("PutNewRoomStatus: Failed to translate map to room status")
+		return errors.New("room status translation")
+	}
+
+	mutex.Lock()
+	roomStateCurrent[roomStatus["RoomNum"].(string)] = *rs
+	mutex.Unlock()
+	return nil
+}
+
 func GetRoomStati(roomStatus string, durLimit time.Duration) ([]RoomState, error) {
-	// process RoomStateCurrent and create list of rooms according to status
+	// process roomStateCurrent and create list of rooms according to status
 	// within	cfg.RoomStatusMonitorInterval minutes
-	if len(RoomStateCurrent) == 0 {
+	if len(roomStateCurrent) == 0 {
 		if err := loadRoomsState(); err != nil {
 			log.Println("room_status: Cannot load room status: error=", err)
 			return nil, err
@@ -126,14 +185,14 @@ func GetRoomStati(roomStatus string, durLimit time.Duration) ([]RoomState, error
 	_, nowTime := misc.TimeNow()
 
 	var keys []string
-	for k := range RoomStateCurrent {
+	for k := range roomStateCurrent {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
 	rtbl := make([]RoomState, 0)
 	for _, kvalue := range keys {
-		rs := RoomStateCurrent[kvalue]
+		rs := roomStateCurrent[kvalue]
 		if strings.Compare(roomStatus, rs.Status) == 0 {
 			if durLimit > 0 {
 				checkoutTime, err := time.ParseInLocation(staff.DateTimeLongForm, rs.CheckoutTime, misc.GetLocale())
@@ -161,15 +220,11 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	open_rooms_only := false
-	open_rooms, ok := r.URL.Query()["register"]
-	if !ok || len(open_rooms[0]) < 1 {
-		log.Println("register: Url Param 'register' is missing so list all rooms")
-	}
-
-	if len(open_rooms) > 0 {
-		if open_rooms[0] == "open" {
-			open_rooms_only = true
+	openRoomsOnly := false
+	openRooms, _ := r.URL.Query()["register"]
+	if len(openRooms) > 0 {
+		if openRooms[0] == OpenStatus {
+			openRoomsOnly = true
 		}
 	}
 
@@ -182,7 +237,7 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// fill the map since service probably just started up
-	if len(RoomStateCurrent) == 0 {
+	if len(roomStateCurrent) == 0 {
 		if err := loadRoomsState(); err != nil {
 			log.Println("room_status: Cannot load room status: error=", err)
 			sessDetails.Sess.Message = "Failed to get room status"
@@ -193,13 +248,13 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 
 	var rtbl []RoomState
 	dur := time.Duration(0)
-	if open_rooms_only {
+	if openRoomsOnly {
 		rtbl, err = GetRoomStati(OpenStatus, dur)
 	} else {
 		rtbl, err = GetRoomStati(BookedStatus, dur)
 	}
 	if err != nil {
-		log.Println("room_status:ERROR: Find ", open_rooms[0], " rooms: err=", err)
+		log.Println("room_status:ERROR: Find ", openRooms[0], " rooms: err=", err)
 		sessDetails.Sess.Message = "Failed to get room status"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		return
@@ -208,7 +263,7 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 	roomData := RoomStateTable{
 		sessDetails,
 		rtbl,
-		open_rooms_only,
+		openRoomsOnly,
 	}
 	err = t.Execute(w, &roomData)
 	if err != nil {
@@ -270,7 +325,7 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 
 	var once sync.Once
 	onceBody := func() {
-		delete(RoomStateCurrent, room)
+		delete(roomStateCurrent, room)
 	}
 	once.Do(onceBody)
 
@@ -368,14 +423,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		fname := r.Form["first_name"]
 		lname := r.Form["last_name"]
 		duration := r.Form["duration"]
-		room_num := r.Form["room_num"]
+		roomNum := r.Form["room_num"]
 
 		// set in db
 		// read room status record and reset as booked with customers name
-		rs, err := database.DbwRead(RoomStatusEntity, room_num[0])
+		rs, err := database.DbwRead(RoomStatusEntity, roomNum[0])
 		if err != nil {
-			log.Println("register:ERROR: Failed to read room status for room=", room_num[0], " : err=", err)
-			sessDetails.Sess.Message = "Failed to read room status: room=" + room_num[0]
+			log.Println("register:ERROR: Failed to read room status for room=", roomNum[0], " : err=", err)
+			sessDetails.Sess.Message = "Failed to read room status: room=" + roomNum[0]
 			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
 		}
@@ -393,14 +448,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		// TODO record for the customer ?
 		err = database.DbwUpdate(RoomStatusEntity, "", rs)
 		if err != nil {
-			log.Println("register:ERROR: Failed to update room status for room=", room_num[0], " : err=", err)
-			sessDetails.Sess.Message = "Failed to read room status: room=" + room_num[0]
+			log.Println("register:ERROR: Failed to update room status for room=", roomNum[0], " : err=", err)
+			sessDetails.Sess.Message = "Failed to read room status: room=" + roomNum[0]
 			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
 		}
 
 		roomState := RoomState{
-			RoomNum:      room_num[0],
+			RoomNum:      roomNum[0],
 			Status:       BookedStatus,
 			GuestInfo:    guestInfo,
 			CheckinTime:  nowStr,
@@ -409,10 +464,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		}
 		var once sync.Once
 		onceBody := func() {
-			RoomStateCurrent[room_num[0]] = roomState
+			roomStateCurrent[roomNum[0]] = roomState
 		}
 		once.Do(onceBody)
 
-		http.Redirect(w, r, "/desk/room_hop?room="+room_num[0]+"&citime="+nowStr+"&repeat=true", http.StatusFound)
+		http.Redirect(w, r, "/desk/room_hop?room="+roomNum[0]+"&citime="+nowStr+"&repeat=true", http.StatusFound)
 	}
 }

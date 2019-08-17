@@ -23,5 +23,5 @@ echo "Sleeping for 30 seconds to let the db come up before initializing it..."
 sleep 30
 
 # dbusername dbuserpasswd
-./init_cdb.sh $1 $2
+./scripts/init_cdb.sh $1 $2
 

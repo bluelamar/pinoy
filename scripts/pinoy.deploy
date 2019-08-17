@@ -56,7 +56,7 @@ sanity_checks() {
 server_status () {
 
     ps_alive=0
-    ps -eaf | grep "/usr/bin/pinoy" | grep -v grep
+    ps -eaf | grep "/usr/sbin/pinoy" | grep -v grep
     RET=$?
     if [ $RET -eq 0 ]; then
         # running
@@ -101,7 +101,7 @@ case "${1:-''}" in
     else
         # Start pinoy 
         cd $HOME
-        /usr/bin/pinoy &
+        /usr/sbin/pinoy &
 
         for i in $(seq 1 10); do
             sleep 1
@@ -121,7 +121,7 @@ case "${1:-''}" in
     log_daemon_msg "Stopping pinoy server" "pinoy"
     if ! server_status check_dead nowarn; then
       set +e
-      ID=`ps -eaf | grep "/usr/bin/pinoy" | grep -v grep | awk '{print $2}'`
+      ID=`ps -eaf | grep "/usr/sbin/pinoy" | grep -v grep | awk '{print $2}'`
       kill $ID
       r=$?
       set -e
@@ -129,13 +129,13 @@ case "${1:-''}" in
         log_end_msg 1
         [ "$VERBOSE" != "no" ] && log_failure_msg "Error: failed to shutdown pinoy"
         log_daemon_msg "Killing pinoy server by signal" "pinoy"
-        killall -15 /usr/bin/pinoy
+        killall -15 /usr/sbin/pinoy
         server_down=
         for i in 1 2 3 4 5 6 7 8 9 10; do
               sleep 1
               if server_status check_dead nowarn; then server_down=1; break; fi
             done
-          if test -z "$server_down"; then killall -9 /usr/bin/pinoy; fi
+          if test -z "$server_down"; then killall -9 /usr/sbin/pinoy; fi
       fi
     fi
 

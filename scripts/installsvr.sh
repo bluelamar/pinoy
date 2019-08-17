@@ -27,8 +27,8 @@ cp config.json /etc/pinoy/
 cp -r static /etc/pinoy/
 chmod -R 644 /etc/pinoy/
 
-cp pinoy /usr/bin/
-chmod 755 /usr/bin/pinoy
+cp pinoy /usr/sbin/
+chmod 755 /usr/sbin/pinoy
 
 echo "Make directory for log files: ensure config.json is set with this path:"
 mkdir /var/log/pinoy

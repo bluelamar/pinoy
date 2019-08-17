@@ -626,7 +626,7 @@ func UpdateEmployeeHours(userid string, clockin bool, expHours int, sess *psessi
 
 	lastExpHrs, _ := (*rMap)["ExpectedHours"].(float64)
 	if clockin {
-		cnt := (*rMap)["ClockInCnt"].(int)
+		cnt, _ := (*rMap)["ClockInCnt"].(int)
 		(*rMap)["ClockInCnt"] = cnt + 1
 		// how to handle if desk didnt clockout bell hop
 		// - so if old clockin is > clockout means the hop was not clocked out
@@ -640,14 +640,17 @@ func UpdateEmployeeHours(userid string, clockin bool, expHours int, sess *psessi
 					" : last-clockin=", lastClockinTime, " : last clock-out=empty : last expected-hours=", (*rMap)["ExpectedHours"])
 			}
 			// did staff member not get clocked out?
-			total := (*rMap)["TotalHours"].(float64) + lastExpHrs
+			total, _ := (*rMap)["TotalHours"].(float64)
+			total += lastExpHrs
 			(*rMap)["TotalHours"] = total
 		} else {
-			total := (*rMap)["TotalHours"].(float64) + duration.Hours()
+			total, _ := (*rMap)["TotalHours"].(float64)
+			total += duration.Hours()
 			(*rMap)["TotalHours"] = total
 		}
 
-		total := (*rMap)["TotalExpectedHours"].(float64) + float64(expHours)
+		total, _ := (*rMap)["TotalExpectedHours"].(float64)
+		total += float64(expHours)
 		(*rMap)["TotalExpectedHours"] = total
 
 		// reset the LastClockinTime
@@ -655,16 +658,18 @@ func UpdateEmployeeHours(userid string, clockin bool, expHours int, sess *psessi
 		(*rMap)["ExpectedHours"] = expHours
 
 	} else {
-		cnt := (*rMap)["ClockOutCnt"].(int)
+		cnt, _ := (*rMap)["ClockOutCnt"].(int)
 		(*rMap)["ClockOutCnt"] = cnt + 1
 		(*rMap)["LastClockoutTime"] = nowStr
 		// clocked out so recalc the total hours
 		if okIn {
-			total := nowMinusLastClockin + (*rMap)["TotalHours"].(float64)
+			total, _ := (*rMap)["TotalHours"].(float64)
+			total += nowMinusLastClockin
 			(*rMap)["TotalHours"] = total
 		} else {
 			// something is missing so try to guess
-			total := (*rMap)["TotalHours"].(float64) + lastExpHrs
+			total, _ := (*rMap)["TotalHours"].(float64)
+			total += lastExpHrs
 			(*rMap)["TotalHours"] = total
 		}
 	}

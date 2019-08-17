@@ -309,7 +309,7 @@ func main() {
 	http.HandleFunc("/manager/upd_food", food.UpdFood)
 	http.HandleFunc("/manager/svc_stats", misc.SvcStats)
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("static/css"))))
-	err = http.ListenAndServe(":8080", context.ClearHandler(http.DefaultServeMux)) // setting listening port
+	err = http.ListenAndServe("127.0.0.1:8080", context.ClearHandler(http.DefaultServeMux)) // setting listening port
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}

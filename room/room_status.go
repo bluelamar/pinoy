@@ -31,6 +31,8 @@ type RoomState struct {
 	RoomNum      string
 	Status       string
 	GuestInfo    string
+	NumGuests    int
+	Duration     string
 	CheckinTime  string
 	CheckoutTime string
 	Rate         string
@@ -71,6 +73,14 @@ func xlateToRoomStatus(val map[string]interface{}) *RoomState {
 	if str, exists := val["GuestInfo"]; exists {
 		gi = str.(string)
 	}
+	numg := int(1)
+	if num, exists := val["NumGuests"]; exists {
+		numg = num.(int)
+	}
+	dur := ""
+	if str, exists := val["Duration"]; exists {
+		dur = str.(string)
+	}
 	ci := ""
 	if str, exists := val["CheckinTime"]; exists {
 		ci = str.(string)
@@ -87,6 +97,8 @@ func xlateToRoomStatus(val map[string]interface{}) *RoomState {
 		RoomNum:      rn,
 		Status:       st,
 		GuestInfo:    gi,
+		NumGuests:    numg,
+		Duration:     dur,
 		CheckinTime:  ci,
 		CheckoutTime: co,
 		Rate:         rt,
@@ -108,7 +120,7 @@ func loadRoomsState() error {
 			return
 		}
 
-		var roomsMap map[string]RoomState = make(map[string]RoomState)
+		roomsMap := make(map[string]RoomState)
 		for _, v := range roomStati {
 			val := v.(map[string]interface{})
 			rs := xlateToRoomStatus(val)
@@ -116,41 +128,6 @@ func loadRoomsState() error {
 				continue
 			}
 			rn := val["RoomNum"].(string)
-			/*
-				rn := ""
-				if str, exists := val["RoomNum"]; exists {
-					rn = str.(string)
-				} else {
-					continue
-				}
-				st := ""
-				if str, exists := val["Status"]; exists {
-					st = str.(string)
-				}
-				gi := ""
-				if str, exists := val["GuestInfo"]; exists {
-					gi = str.(string)
-				}
-				ci := ""
-				if str, exists := val["CheckinTime"]; exists {
-					ci = str.(string)
-				}
-				co := ""
-				if str, exists := val["CheckoutTime"]; exists {
-					co = str.(string)
-				}
-				rt := ""
-				if str, exists := val["Rate"]; exists {
-					rt = str.(string)
-				}
-				rs := RoomState{
-					RoomNum:      rn,
-					Status:       st,
-					GuestInfo:    gi,
-					CheckinTime:  ci,
-					CheckoutTime: co,
-					Rate:         rt,
-				} */
 			roomsMap[rn] = *rs
 		}
 		roomStateCurrent = roomsMap
@@ -159,16 +136,14 @@ func loadRoomsState() error {
 	return err
 }
 
-func PutNewRoomStatus(roomStatus map[string]interface{}) error {
+func putNewRoomStatus(roomStatus map[string]interface{}) error {
 	rs := xlateToRoomStatus(roomStatus)
 	if rs == nil {
-		log.Println("PutNewRoomStatus: Failed to translate map to room status")
+		log.Println("putNewRoomStatus:ERROR: Failed to translate map to room status")
 		return errors.New("room status translation")
 	}
 
-	mutex.Lock()
-	roomStateCurrent[roomStatus["RoomNum"].(string)] = *rs
-	mutex.Unlock()
+	updateRoomStatus(roomStatus["RoomNum"].(string), *rs)
 	return nil
 }
 
@@ -185,15 +160,17 @@ func GetRoomStati(roomStatus string, durLimit time.Duration) ([]RoomState, error
 	_, nowTime := misc.TimeNow()
 
 	var keys []string
+	mutex.Lock()
 	for k := range roomStateCurrent {
 		keys = append(keys, k)
 	}
+	mutex.Unlock()
 	sort.Strings(keys)
 
 	rtbl := make([]RoomState, 0)
 	for _, kvalue := range keys {
-		rs := roomStateCurrent[kvalue]
-		if strings.Compare(roomStatus, rs.Status) == 0 {
+		rs, ok := roomStateCurrent[kvalue]
+		if ok && strings.Compare(roomStatus, rs.Status) == 0 {
 			if durLimit > 0 {
 				checkoutTime, err := time.ParseInLocation(staff.DateTimeLongForm, rs.CheckoutTime, misc.GetLocale())
 				if err == nil {
@@ -205,6 +182,7 @@ func GetRoomStati(roomStatus string, durLimit time.Duration) ([]RoomState, error
 					log.Println("GetRoomStati:ERROR: bad checkout time in record=", rs, " :err=", err)
 				}
 			}
+
 			rtbl = append(rtbl, rs)
 		}
 	}
@@ -303,6 +281,17 @@ func CalcCheckoutTime(ciTime time.Time, duration string) (string, error) {
 	return nowStr, nil
 }
 
+func removeRoomStatus(room string) {
+	mutex.Lock()
+	delete(roomStateCurrent, room)
+	mutex.Unlock()
+}
+func updateRoomStatus(room string, rs RoomState) {
+	mutex.Lock()
+	roomStateCurrent[room] = rs
+	mutex.Unlock()
+}
+
 func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetails *psession.SessionDetails) error {
 	rs, err := database.DbwRead(RoomStatusEntity, room)
 	if err != nil {
@@ -313,6 +302,8 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	}
 	(*rs)["Status"] = OpenStatus
 	(*rs)["GuestInfo"] = ""
+	(*rs)["NumGuests"] = int(0)
+	(*rs)["Duration"] = ""
 	(*rs)["CheckinTime"] = ""
 	(*rs)["CheckoutTime"] = ""
 	err = database.DbwUpdate(RoomStatusEntity, "", rs)
@@ -323,11 +314,13 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 		return err
 	}
 
-	var once sync.Once
-	onceBody := func() {
-		delete(roomStateCurrent, room)
+	roomState := xlateToRoomStatus(*rs)
+	if roomState != nil {
+		updateRoomStatus(room, *roomState)
+	} else {
+		log.Println("checkout:ERROR: Failed to update in-mem checkout room=", room)
+		// TODO set flag force reload?
 	}
-	once.Do(onceBody)
 
 	return nil
 }
@@ -347,7 +340,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 		rooms, ok := r.URL.Query()["room"]
 		if !ok || len(rooms[0]) < 1 {
-			log.Println("register: Missing required room param")
+			log.Println("register:ERROR: Missing required room param")
 			sessDetails.Sess.Message = "Failed to register - missing room number"
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
 			return
@@ -385,7 +378,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 		rrs2, ok := (*rateMap)["Rates"]
 		if !ok {
-			log.Println("register:ERROR: failed to get rates: err=", err)
+			log.Println("register:ERROR: Failed to get rates: err=", err)
 			sessDetails.Sess.Message = "Failed to register - rates missing"
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
@@ -424,6 +417,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		lname := r.Form["last_name"]
 		duration := r.Form["duration"]
 		roomNum := r.Form["room_num"]
+		numGuests := r.Form["num_guests"]
 
 		// set in db
 		// read room status record and reset as booked with customers name
@@ -438,6 +432,11 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		(*rs)["Status"] = BookedStatus
 		guestInfo := fname[0] + " " + lname[0]
 		(*rs)["GuestInfo"] = guestInfo
+
+		num, _ := strconv.Atoi(numGuests[0])
+		(*rs)["NumGuests"] = num
+
+		(*rs)["Duration"] = duration[0]
 
 		nowStr, nowTime := misc.TimeNow()
 		(*rs)["CheckinTime"] = nowStr
@@ -458,15 +457,13 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			RoomNum:      roomNum[0],
 			Status:       BookedStatus,
 			GuestInfo:    guestInfo,
+			NumGuests:    num,
+			Duration:     duration[0],
 			CheckinTime:  nowStr,
 			CheckoutTime: checkOutTime,
 			Rate:         (*rs)["Rate"].(string),
 		}
-		var once sync.Once
-		onceBody := func() {
-			roomStateCurrent[roomNum[0]] = roomState
-		}
-		once.Do(onceBody)
+		updateRoomStatus(roomNum[0], roomState)
 
 		http.Redirect(w, r, "/desk/room_hop?room="+roomNum[0]+"&citime="+nowStr+"&repeat=true", http.StatusFound)
 	}

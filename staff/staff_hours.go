@@ -115,7 +115,7 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 			// only show the hoppers
 			entity, err := database.DbwRead(StaffEntity, id)
 			if err != nil {
-				log.Println("report_staff_hours:ERROR: desk role: failed to read user=", id, " : err=", err)
+				log.Println("report_staff_hours:ERROR: desk role: Failed to read user=", id, " : err=", err)
 				continue
 			}
 
@@ -303,11 +303,11 @@ func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 
 	toDB := composeDbName("c")
 	if err := cleanupHours(toDB); err != nil {
-		log.Println("BackupStaffHours: Failed to cleanup db=", toDB, " : err=", err)
+		log.Println("BackupStaffHours:ERROR: Failed to cleanup db=", toDB, " : err=", err)
 	}
 	fromDB := composeDbName("b")
 	if err := copyHours(fromDB, toDB); err != nil {
-		log.Println("BackupStaffHours: Failed to copy hours from db=", fromDB, " to=", toDB, " : err=", err)
+		log.Println("BackupStaffHours:ERROR: Failed to copy hours from db=", fromDB, " to=", toDB, " : err=", err)
 	}
 
 	bkupTime, err := database.DbwRead(fromDB, "BackupTime")
@@ -315,22 +315,22 @@ func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 		// write it to the toDB
 		database.DbwUpdate(toDB, "BackupTime", bkupTime)
 	} else {
-		log.Println("BackupStaffHours: Failed to copy backup time from=", fromDB, " to=", toDB, " : err=", err)
+		log.Println("BackupStaffHours:ERROR: Failed to copy backup time from=", fromDB, " to=", toDB, " : err=", err)
 	}
 
 	toDB = fromDB
 	if err := cleanupHours(toDB); err != nil {
-		log.Println("BackupStaffHours: Failed to cleanup db=", toDB, " : err=", err)
+		log.Println("BackupStaffHours:ERROR: Failed to cleanup db=", toDB, " : err=", err)
 	}
 	if err := copyHours(StaffHoursEntity, toDB); err != nil {
-		log.Println("BackupStaffHours: Failed to copy hours from db=", StaffHoursEntity, " to=", toDB, " : err=", err)
+		log.Println("BackupStaffHours:ERROR: Failed to copy hours from db=", StaffHoursEntity, " to=", toDB, " : err=", err)
 	}
 	bkupTime, err = database.DbwRead(StaffHoursEntity, "BackupTime")
 	if err == nil {
 		// write it to the toDB
 		database.DbwUpdate(toDB, "BackupTime", bkupTime)
 	} else {
-		log.Println("BackupStaffHours: Failed to copy backup time from=", fromDB, " to=", toDB, " : err=", err)
+		log.Println("BackupStaffHours:ERROR: Failed to copy backup time from=", fromDB, " to=", toDB, " : err=", err)
 	}
 
 	// lastly reset the current staff hours
@@ -372,12 +372,12 @@ func DeleteStaffHoursEntity(userId string) error {
 	var rMap *map[string]interface{}
 	rMap, err = database.DbwRead(StaffHoursEntity, userId)
 	if err != nil {
-		log.Println("DeleteStaffHoursEntity: Failed to read staff hours with name=", userId)
+		log.Println("DeleteStaffHoursEntity:ERROR: Failed to read staff hours with name=", userId)
 		return err
 	}
 
 	if err := database.DbwDelete(StaffHoursEntity, rMap); err != nil {
-		log.Println("DeleteStaffHoursEntity: Failed to delete staff hours with name=", userId)
+		log.Println("DeleteStaffHoursEntity:ERROR: Failed to delete staff hours with name=", userId)
 		return err
 	}
 	return nil

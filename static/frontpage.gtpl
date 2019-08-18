@@ -4,8 +4,6 @@
 function roomStateTimer() {
   var request = new XMLHttpRequest()
   // Open a new connection, using the GET request on the URL endpoint
-  // FIX TODO change to https and localhost to the domain name
-  //request.open('GET', 'http://localhost:80/desk/room_stati', true);
   request.open('GET', '/desk/room_stati', true);
   request.onload = function () {
     var res = 'Rooms soon to Checkout: ';

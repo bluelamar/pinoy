@@ -48,7 +48,7 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 
 	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/rooms.gtpl", "static/header.gtpl")
 	if err != nil {
-		log.Println("rooms: Failed to parse template: err=", err)
+		log.Println("rooms:ERROR: Failed to parse template: err=", err)
 		sessDetails.Sess.Message = "Internal error"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		return
@@ -57,7 +57,7 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 	// []interface{}, error
 	rrs, err := database.DbwReadAll(RoomsEntity)
 	if err != nil {
-		log.Println("rooms: Failed to read rooms: err=", err)
+		log.Println("rooms:ERROR: Failed to read rooms: err=", err)
 		sessDetails.Sess.Message = `Failed to read rooms`
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		return
@@ -67,7 +67,7 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 		val := v.(map[string]interface{})
 		nbs, err := strconv.Atoi(val["NumBeds"].(string))
 		if err != nil {
-			log.Println("rooms: Failed to convert num rooms: err=", err)
+			log.Println("rooms:ERROR: Failed to convert num rooms: err=", err)
 			sessDetails.Sess.Message = `Failed to convert number of rooms`
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
@@ -87,7 +87,7 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 	}
 	err = t.Execute(w, &tblData)
 	if err != nil {
-		log.Println("room_rates: Failed to exec template: err=", err)
+		log.Println("room_rates:ERROR: Failed to exec template: err=", err)
 		sessDetails.Sess.Message = `Internal error for room rates`
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 	}
@@ -143,20 +143,22 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			err := database.DbwDelete(RoomsEntity, rMap)
-			if err != nil {
+			if err := database.DbwDelete(RoomsEntity, rMap); err != nil {
 				sessDetails.Sess.Message = "Failed to delete room: " + room
 				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusConflict)
-			} else {
-				http.Redirect(w, r, "/desk/room_status", http.StatusFound)
+				return
 			}
+
+			removeRoomStatus(room)
+
+			http.Redirect(w, r, "/desk/room_status", http.StatusFound)
 			return
 		}
 
 		// user wants to add or update existing room
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/upd_room.gtpl", "static/header.gtpl")
 		if err != nil {
-			log.Println("upd_room: Failed to parse template: err=", err)
+			log.Println("upd_room:ERROR: Failed to parse template: err=", err)
 			sessDetails.Sess.Message = "Failed to Update room: " + room
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
@@ -166,7 +168,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		if rMap != nil {
 			nbs, err := strconv.Atoi((*rMap)["NumBeds"].(string))
 			if err != nil {
-				log.Println("upd_room: Failed to comvert num beds: err=", err)
+				log.Println("upd_room:ERROR: Failed to comvert num beds: err=", err)
 				sessDetails.Sess.Message = "Failed to Update room: " + room
 				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 				return
@@ -182,7 +184,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		// read the rate classes and create slice of strings
 		rrs, err := database.DbwReadAll(RoomRatesEntity)
 		if err != nil {
-			log.Println("upd_room: Failed to read room rates: err=", err)
+			log.Println("upd_room:ERROR: Failed to read room rates: err=", err)
 			sessDetails.Sess.Message = "Please Add or Update Room Rates"
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusConflict)
 			return
@@ -207,7 +209,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		}
 		err = t.Execute(w, updData)
 		if err != nil {
-			log.Println("upd_room: Failed to exec template: err=", err)
+			log.Println("upd_room:ERROR: Failed to exec template: err=", err)
 			sessDetails.Sess.Message = `Internal error in Update Room Rates`
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		}
@@ -252,7 +254,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 
 		err = database.DbwUpdate(RoomsEntity, key, rMap)
 		if err != nil {
-			log.Println("upd_room:POST: Failed to create or update room=", roomNum[0], " :err=", err)
+			log.Println("upd_room:POST:ERROR: Failed to create or update room=", roomNum[0], " :err=", err)
 			sessDetails.Sess.Message = "Failed to create or update room=" + roomNum[0]
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
@@ -263,7 +265,6 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		var roomStatus *map[string]interface{}
 		key = ""
 		if update {
-			//_, err = PDb.Update(RoomsEntity, (*rMap)["_id"].(string), (*rMap)["_rev"].(string), (*rMap))
 			roomStatus, err = database.DbwRead(RoomStatusEntity, roomNum[0])
 			if err == nil {
 				(*roomStatus)["Rate"] = roomRate[0]
@@ -283,14 +284,14 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		}
 		err = database.DbwUpdate(RoomStatusEntity, key, roomStatus)
 		if err != nil {
-			log.Println("upd_room:POST: Failed to create or update room status=", roomNum[0], " :err=", err)
+			log.Println("upd_room:POST:ERROR: Failed to create or update room status=", roomNum[0], " :err=", err)
 
 			sessDetails.Sess.Message = "Failed to update room status: room=" + roomNum[0]
 			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
 		}
 		// update in-memory room_status
-		PutNewRoomStatus(*roomStatus)
+		putNewRoomStatus(*roomStatus)
 
 		http.Redirect(w, r, "/manager/rooms", http.StatusFound)
 	}

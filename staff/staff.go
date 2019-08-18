@@ -52,7 +52,7 @@ func Staff(w http.ResponseWriter, r *http.Request) {
 
 	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/staff.gtpl", "static/header.gtpl")
 	if err != nil {
-		log.Println("staff: Failed to parse template: err=", err)
+		log.Println("staff:ERROR: Failed to parse template: err=", err)
 		sessDetails.Sess.Message = "Internal error"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return

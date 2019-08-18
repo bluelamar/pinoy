@@ -51,7 +51,7 @@ func RoomRates(w http.ResponseWriter, r *http.Request) {
 
 	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/room_rates.gtpl", "static/header.gtpl")
 	if err != nil {
-		log.Println("room_rates: Failed to parse template: err=", err)
+		log.Println("room_rates:ERROR: Failed to parse template: err=", err)
 		sessDetails.Sess.Message = "Internal error"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
@@ -60,7 +60,7 @@ func RoomRates(w http.ResponseWriter, r *http.Request) {
 	// []interface{}, error
 	rrs, err := database.DbwReadAll(RoomRatesEntity)
 	if err != nil {
-		log.Println("room_rates: Failed to read room rates: err=", err)
+		log.Println("room_rates:ERROR: Failed to read room rates: err=", err)
 		sessDetails.Sess.Message = "Internal error getting room rates"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
@@ -93,7 +93,7 @@ func RoomRates(w http.ResponseWriter, r *http.Request) {
 	}
 	err = t.Execute(w, &tblData)
 	if err != nil {
-		log.Println("room_rates: Failed to execute template: err=", err)
+		log.Println("room_rates:ERROR: Failed to execute template: err=", err)
 		sessDetails.Sess.Message = "Internal error getting room rates"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 	}
@@ -157,7 +157,7 @@ func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 		// user wants to add or update existing room rate
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/upd_room_rate.gtpl", "static/header.gtpl")
 		if err != nil {
-			log.Println("upd_room_rate: Failed to parse template: err=", err)
+			log.Println("upd_room_rate:ERROR: Failed to parse template: err=", err)
 			sessDetails.Sess.Message = "Failed to update room rate: " + rateClass
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
@@ -167,7 +167,7 @@ func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 		if rateMap != nil {
 			rrs2, ok := (*rateMap)["Rates"]
 			if !ok {
-				log.Println("upd_room_rate: Failed to get rates")
+				log.Println("upd_room_rate:ERROR: Failed to get rates")
 				sessDetails.Sess.Message = "No rates"
 				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 				return
@@ -195,7 +195,7 @@ func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 		}
 		err = t.Execute(w, updData)
 		if err != nil {
-			log.Println("upd_room_rate: Failed to exec template: err=", err)
+			log.Println("upd_room_rate:ERROR: Failed to exec template: err=", err)
 			sessDetails.Sess.Message = "Failed to update room rate: " + rateClass
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		}
@@ -246,7 +246,7 @@ func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 		}
 
 		newRate := make(map[string]interface{})
-		newRate["TUnit"] = newTimeUnitStr // FIX newTimeUnit[0]
+		newRate["TUnit"] = newTimeUnitStr
 		newRate["Cost"] = newCost[0]
 
 		newRates = append(newRates, newRate)
@@ -255,7 +255,7 @@ func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 		// set in db
 		err = database.DbwUpdate(RoomRatesEntity, key, rateMap)
 		if err != nil {
-			log.Println("upd_room_rate:POST: Failed to create or updated rate=", rateClass[0], " :err=", err)
+			log.Println("upd_room_rate:POST:ERROR: Failed to create or updated rate=", rateClass[0], " :err=", err)
 			sessDetails.Sess.Message = "Failed to create or update rate=" + rateClass[0]
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return

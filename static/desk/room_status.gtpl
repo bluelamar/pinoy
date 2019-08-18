@@ -9,14 +9,18 @@
 
 {{$role:=.Sess.Role}}
 
-<p>Table of rooms</p>
+{{if .OpenRoomsOnly}}
+<p><h3>Table of <i>Open</i> rooms</h3></p>
+{{else}}
+<p><h3>Table of <i>Booked</i> rooms</h3></p>
+{{end}}
 <table>
 <tr>
 <th>Room Number</th><th>Room Status</th><th>Room Rate</th>
 {{if .OpenRoomsOnly}}
   <th>Register</th>
 {{else}}
-  <th>Guest Name</th>
+  <th>Guest Name</th><th>Number of Guests</th><th>Duration</th>
   <th>Guest Check in time</th><th>Guest Check out time</th><th>Check Out</th><th>Purchase Items</th>
 {{end}}
 </tr>
@@ -26,7 +30,7 @@
 {{if eq .Status "open"}}
   <td><a id="registration" class="button" href="/desk/register?room={{.RoomNum}}&rate={{.Rate}}&reg=checkin">Register</a></td>
 {{else}}
-  <td>{{.GuestInfo}}</td><td>{{.CheckinTime}}</td><td>{{.CheckoutTime}}</td>
+  <td>{{.GuestInfo}}</td><td>{{.NumGuests}}</td><td>{{.Duration}}</td><td>{{.CheckinTime}}</td><td>{{.CheckoutTime}}</td>
   <td><a id="registration" class="button" href="/desk/register?room={{.RoomNum}}&reg=checkout">Check Out</a></td>
   <td><a id="purchase" class="button" href="/desk/food?room={{.RoomNum}}">Purchase</a></td>
 {{end}}

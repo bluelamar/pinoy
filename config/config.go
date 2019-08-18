@@ -2,7 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 )
@@ -25,15 +24,14 @@ type PinoyConfig struct {
 func LoadConfig(fpath string) (*PinoyConfig, error) {
 	content, err := ioutil.ReadFile(fpath)
 	if err != nil {
-		log.Println("Config: Failed to read config file:", err)
+		log.Println("Config:ERROR: Failed to read config file:", err)
 		return nil, err
 	}
 
 	var cfg PinoyConfig
 	err = json.Unmarshal(content, &cfg)
 	if err != nil {
-		fmt.Println("error:", err)
-		log.Println("Config: Failed to unmarshal config file:", err)
+		log.Println("Config:ERROR: Failed to unmarshal config file:", err)
 	}
 	return &cfg, nil
 }

@@ -110,7 +110,7 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/room_hop.gtpl", "static/header.gtpl")
 		if err != nil {
-			log.Println("room_hop:err: Failed to parse template: err=", err)
+			log.Println("room_hop:ERROR: Failed to parse template: err=", err)
 			sessDetails.Sess.Message = "Error with bell hops"
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
@@ -125,7 +125,7 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 		}
 		err = t.Execute(w, regData)
 		if err != nil {
-			log.Println("room_hop: Failed to execute template : err=", err)
+			log.Println("room_hop:ERROR: Failed to execute template : err=", err)
 			sessDetails.Sess.Message = "Error with bell hops"
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
@@ -144,14 +144,14 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 		}
 		umap, err := database.DbwRead(staff.StaffEntity, hopper[0])
 		if err != nil {
-			log.Println("room_hop: Failed to read room attendent=", hopper[0], " : err=", err)
+			log.Println("room_hop:ERROR: Failed to read room attendent=", hopper[0], " : err=", err)
 			sessDetails.Sess.Message = "Error with bell hop " + hopper[0]
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
 		}
 		passwd, ok := (*umap)["Pwd"]
 		if !ok {
-			log.Println("room_hop: Failed to check passwd for room attendent=", hopper[0], " : room=", room_num[0], " : err=", err)
+			log.Println("room_hop:ERROR: Failed to check passwd for room attendent=", hopper[0], " : room=", room_num[0], " : err=", err)
 			sessDetails.Sess.Message = "PIN check Error with bell hop " + hopper[0]
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return

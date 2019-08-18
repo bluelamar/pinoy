@@ -41,10 +41,10 @@ func Food(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// FIX TODO remove this once food functionality is ready
 		sessDetails.Sess.Message = "Not Ready Yet"
-        _ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
-        return
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		return
 	}
-
+	/* FIX TODO
 	room := ""
 	rooms, ok := r.URL.Query()["room"]
 	if !ok || len(rooms[0]) < 1 {
@@ -87,6 +87,7 @@ func Food(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError) // FIX
 		}
 	}
+	*/
 }
 
 func UpdFood(w http.ResponseWriter, r *http.Request) {
@@ -100,10 +101,10 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// FIX TODO remove this once food functionality is ready
 		sessDetails.Sess.Message = "Not Ready Yet"
-        _ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
-        return
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		return
 	}
-
+	/* FOX TODO
 	r.ParseForm()
 	for k, v := range r.Form { // FIX
 		fmt.Println("key:", k)
@@ -123,6 +124,7 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("upd_food:FIX post about to redirect to food\n")
 	http.Redirect(w, r, "/desk/food", http.StatusFound)
+	*/
 }
 
 func Purchase(w http.ResponseWriter, r *http.Request) {
@@ -133,8 +135,8 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 	if todoFIX {
 		// FIX TODO remove this once food functionality is ready
 		sessDetails.Sess.Message = "Not Ready Yet"
-        _ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
-        return
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		return
 	}
 	// item size room
 	// for get - prefill fields based on query parameters

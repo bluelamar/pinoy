@@ -306,6 +306,8 @@ func main() {
 	http.HandleFunc("/manager/upd_room", room.UpdRoom)
 	http.HandleFunc("/manager/room_rates", room.RoomRates)
 	http.HandleFunc("/manager/upd_room_rate", room.UpdRoomRate)
+	http.HandleFunc("/manager/report_room_usage", room.ReportRoomUsage)
+	http.HandleFunc("/manager/backup_room_usage", room.BackupRoomUsage)
 	http.HandleFunc("/manager/upd_food", food.UpdFood)
 	http.HandleFunc("/manager/svc_stats", misc.SvcStats)
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("static/css"))))

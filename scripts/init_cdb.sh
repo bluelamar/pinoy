@@ -28,6 +28,9 @@ curl -v --cookie "cdbcookies" http://localhost:5984/bellhops -X PUT
 curl -v --cookie "cdbcookies" http://localhost:5984/staff_hours -X PUT
 curl -v --cookie "cdbcookies" http://localhost:5984/staff_hours_bkup_b -X PUT
 curl -v --cookie "cdbcookies" http://localhost:5984/staff_hours_bkup_c -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/room_usage -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/room_usage_bkup_b -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/room_usage_bkup_c -X PUT
 
 INDEX='{"index":{"fields":[{"UserID":"desc"}]}}'
 curl -v -H "Content-Type: application/json" --cookie "cdbcookies" http://localhost:5984/staff_hours/_index -X POST -d $INDEX

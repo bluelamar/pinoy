@@ -42,8 +42,8 @@ type UpdateEmpHours struct {
 	Emp EmpHours
 }
 
-func composeDbName(suffix string) string {
-	dbName := StaffHoursEntity + "_bkup_" + suffix
+func ComposeDbName(prefix, suffix string) string {
+	dbName := prefix + "_bkup_" + suffix
 	return dbName
 }
 
@@ -73,7 +73,7 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 	title := `Current Staff Hours`
 	dbName := StaffHoursEntity
 	if bkups, ok := r.URL.Query()["bkup"]; ok {
-		dbName = composeDbName(bkups[0])
+		dbName = ComposeDbName(StaffHoursEntity, bkups[0])
 		log.Println("ReportStaffHours: use backup db=", dbName)
 		if bkups[0] == "b" {
 			title = `Previous Staff Hours`
@@ -284,7 +284,7 @@ func copyHours(fromDB, toDB string) error {
 		}
 		err = database.DbwUpdate(toDB, (*emp)["UserID"].(string), emp)
 		if err != nil {
-			log.Println("copyHours:ERROR: Failed to update db for taff hours for userid=", (*emp)["UserID"].(string), " : err=", err)
+			log.Println("copyHours:ERROR: Failed to update db for staff hours for userid=", (*emp)["UserID"].(string), " : err=", err)
 			return err
 		}
 	}
@@ -301,11 +301,11 @@ func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	toDB := composeDbName("c")
+	toDB := ComposeDbName(StaffHoursEntity, "c")
 	if err := cleanupHours(toDB); err != nil {
 		log.Println("BackupStaffHours:ERROR: Failed to cleanup db=", toDB, " : err=", err)
 	}
-	fromDB := composeDbName("b")
+	fromDB := ComposeDbName(StaffHoursEntity, "b")
 	if err := copyHours(fromDB, toDB); err != nil {
 		log.Println("BackupStaffHours:ERROR: Failed to copy hours from db=", fromDB, " to=", toDB, " : err=", err)
 	}

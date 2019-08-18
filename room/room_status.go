@@ -20,12 +20,25 @@ import (
 
 const (
 	RoomStatusEntity = "room_status" // database entity
+	roomUsageEntity  = "room_usage"  // database entity
 
 	// room status
 	BookedStatus = "booked"
 	OpenStatus   = "open"
 	LimboStatus  = "limbo"
 )
+
+type RoomUsage struct {
+	RoomNum      string
+	TotNumGuests int
+	TotHours     float64
+}
+type RoomUsageTable struct {
+	*psession.SessionDetails
+	Title         string
+	RoomUsageList []RoomUsage
+	BackupTime    string
+}
 
 type RoomState struct {
 	RoomNum      string
@@ -292,6 +305,22 @@ func updateRoomStatus(room string, rs RoomState) {
 	mutex.Unlock()
 }
 
+func calcDiffTime(ciTime, coTime string) float64 {
+	// convert each string to Time and get the diff
+	clockoutTime, err := time.ParseInLocation(staff.DateTimeLongForm, coTime, misc.GetLocale())
+	if err != nil {
+		return 0
+	}
+
+	clockinTime, err := time.ParseInLocation(staff.DateTimeLongForm, ciTime, misc.GetLocale())
+	if err != nil {
+		return 0
+	}
+
+	dur := clockoutTime.Sub(clockinTime)
+	return dur.Hours()
+}
+
 func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetails *psession.SessionDetails) error {
 	rs, err := database.DbwRead(RoomStatusEntity, room)
 	if err != nil {
@@ -300,6 +329,12 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 		err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		return err
 	}
+
+	// get the number guests and room usage times
+	num, _ := (*rs)["NumGuests"].(int)
+	ciTime, _ := (*rs)["CheckinTime"].(string)
+	coTime, _ := (*rs)["CheckoutTime"].(string)
+
 	(*rs)["Status"] = OpenStatus
 	(*rs)["GuestInfo"] = ""
 	(*rs)["NumGuests"] = int(0)
@@ -320,6 +355,31 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	} else {
 		log.Println("checkout:ERROR: Failed to update in-mem checkout room=", room)
 		// TODO set flag force reload?
+	}
+
+	// now update room usage stats
+	key := ""
+	rs, err = database.DbwRead(roomUsageEntity, room)
+	if err != nil {
+		// lets make a new usage object
+		ru := map[string]interface{}{
+			"RoomNum":      room,
+			"TotNumGuests": int(0),
+			"TotHours":     0,
+		}
+		rs = &ru
+		key = room
+	}
+
+	totGuestCnt := num + (*rs)["TotNumGuests"].(int)
+	(*rs)["TotNumGuests"] = totGuestCnt
+	// calculate the hours of room usage
+	hours := calcDiffTime(ciTime, coTime)
+	totHours := hours + (*rs)["TotHours"].(float64)
+	(*rs)["TotHours"] = totHours
+	err = database.DbwUpdate(roomUsageEntity, key, rs)
+	if err != nil {
+		log.Println("checkout:ERROR: Failed to update room usage for room=", room, " : err=", err)
 	}
 
 	return nil
@@ -467,4 +527,246 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 		http.Redirect(w, r, "/desk/room_hop?room="+roomNum[0]+"&citime="+nowStr+"&repeat=true", http.StatusFound)
 	}
+}
+
+func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
+	misc.IncrRequestCnt()
+	sessDetails := psession.Get_sess_details(r, "Room Usage", "Room Usage page to Pinoy Lodge")
+	if sessDetails.Sess.Role != psession.ROLE_MGR {
+		sessDetails.Sess.Message = "No Permissions"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		return
+	}
+	if r.Method != "GET" {
+		log.Println("ReportRoomUsage:ERROR: bad http method: should only be a GET")
+		sessDetails.Sess.Message = "Failed to get room usage"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		return
+	}
+
+	t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/manager/room_usage.gtpl", "static/header.gtpl")
+	if err != nil {
+		log.Println("ReportRoomUsage:ERROR: Failed to parse templates: err=", err)
+		sessDetails.Sess.Message = "Failed to get all room usage"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		return
+	}
+
+	title := `Current Room Usage`
+	dbName := roomUsageEntity
+	if bkups, ok := r.URL.Query()["bkup"]; ok {
+		dbName = staff.ComposeDbName(roomUsageEntity, bkups[0])
+		log.Println("ReportRoomUsage: use backup db=", dbName)
+		if bkups[0] == "b" {
+			title = `Previous Room Usage`
+		} else {
+			title = `Oldest Room Usage`
+		}
+	}
+
+	resArray, err := database.DbwReadAll(dbName)
+	if err != nil {
+		log.Println(`ReportRoomUsage:ERROR: db readall error`, err)
+		sessDetails.Sess.Message = "Failed to get all room usage"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		return
+	}
+
+	timeStamp := ""
+	usageList := make([]RoomUsage, 0)
+	for _, v := range resArray {
+		vm := v.(map[string]interface{})
+		id := ""
+		name, exists := vm["RoomNum"]
+		if !exists {
+			// check for timestamp record
+			name, exists = vm["BackupTime"]
+			if exists {
+				timeStamp = name.(string)
+			}
+			continue
+		}
+		id = name.(string)
+		if id == "" {
+			// ignore this record
+			continue
+		}
+
+		totHours := float64(0)
+		if num, exists := vm["TotNumHours"]; exists {
+			totHours = num.(float64)
+		}
+
+		guestCnt := int(0)
+		if num, exists := vm["TotNumGuests"]; exists {
+			guestCnt = int(num.(float64))
+		}
+
+		rusage := RoomUsage{
+			RoomNum:      id,
+			TotNumGuests: guestCnt,
+			TotHours:     totHours,
+		}
+		usageList = append(usageList, rusage)
+	}
+
+	tblData := RoomUsageTable{
+		sessDetails,
+		title,
+		usageList,
+		timeStamp,
+	}
+
+	err = t.Execute(w, &tblData)
+	if err != nil {
+		log.Println("ReportRoomUsage:ERROR: could not execute template: err=", err)
+		sessDetails.Sess.Message = "Failed to report room usage"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+	}
+}
+
+// FIX TODO fixup backup
+func getRoomUsageFromMap(ruMap map[string]interface{}) *map[string]interface{} {
+	id := ""
+	name, exists := ruMap["RoomNum"]
+	if !exists {
+		return nil
+	}
+	id = name.(string)
+	if id == "" {
+		// ignore this record
+		return nil
+	}
+
+	gCnt := int(0)
+	if num, exists := ruMap["TotNumGuests"]; exists {
+		gCnt = int(num.(float64))
+	}
+
+	totHours := float64(0)
+	if num, exists := ruMap["TotHours"]; exists {
+		totHours = num.(float64)
+	}
+
+	ru := map[string]interface{}{
+		//emp := EmpHours{
+		"RoomNum":      id,
+		"TotHours":     totHours,
+		"TotNumGuests": gCnt,
+	}
+	return &ru
+}
+func cleanupHours(dbName string) error {
+	// remove all entities from specified db
+	resArray, err := database.DbwReadAll(dbName)
+	if err != nil {
+		log.Println(`room.cleanupHours:ERROR: db readall: err=`, err)
+		return err
+	}
+
+	for _, v := range resArray {
+		vm := v.(map[string]interface{})
+		ru := getRoomUsageFromMap(vm)
+		if ru == nil {
+			continue
+		}
+		if err := database.DbwDelete(dbName, ru); err != nil {
+			log.Println(`room.cleanupHours:ERROR: db delete: err=`, err)
+		}
+	}
+	return nil
+}
+func copyHours(fromDB, toDB string) error {
+	// copy each entity from fromDB to the toDB
+	resArray, err := database.DbwReadAll(fromDB)
+	if err != nil {
+		log.Println(`room.copyHours:ERROR: db readall: err=`, err)
+		return err
+	}
+	for _, v := range resArray {
+		vm := v.(map[string]interface{})
+		ru := getRoomUsageFromMap(vm)
+		if ru == nil {
+			continue
+		}
+		err = database.DbwUpdate(toDB, (*ru)["RoomNum"].(string), ru)
+		if err != nil {
+			log.Println("room.copyHours:ERROR: Failed to update db for room usage for room=", (*ru)["RooNum"].(string), " : err=", err)
+			return err
+		}
+	}
+
+	return nil
+}
+func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
+	misc.IncrRequestCnt()
+	// check session expiration and authorization
+	sessDetails := psession.Get_sess_details(r, "Backup and Reset Room Usage", "Backup and Reset Room Usage page of Pinoy Lodge")
+	if sessDetails.Sess.Role != psession.ROLE_MGR {
+		sessDetails.Sess.Message = "No Permissions"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		return
+	}
+
+	toDB := staff.ComposeDbName(roomUsageEntity, "c")
+	if err := cleanupHours(toDB); err != nil {
+		log.Println("BackupRoomUsage:ERROR: Failed to cleanup db=", toDB, " : err=", err)
+	}
+	fromDB := staff.ComposeDbName(roomUsageEntity, "b")
+	if err := copyHours(fromDB, toDB); err != nil {
+		log.Println("BackupRoomUsage:ERROR: Failed to copy hours from db=", fromDB, " to=", toDB, " : err=", err)
+	}
+
+	bkupTime, err := database.DbwRead(fromDB, "BackupTime")
+	if err == nil {
+		// write it to the toDB
+		database.DbwUpdate(toDB, "BackupTime", bkupTime)
+	} else {
+		log.Println("BackupRoomUsage:ERROR: Failed to copy backup time from=", fromDB, " to=", toDB, " : err=", err)
+	}
+
+	toDB = fromDB
+	if err := cleanupHours(toDB); err != nil {
+		log.Println("BackupRoomUsage:ERROR: Failed to cleanup db=", toDB, " : err=", err)
+	}
+	if err := copyHours(roomUsageEntity, toDB); err != nil {
+		log.Println("BackupRoomUsage:ERROR: Failed to copy hours from db=", roomUsageEntity, " to=", toDB, " : err=", err)
+	}
+	bkupTime, err = database.DbwRead(roomUsageEntity, "BackupTime")
+	if err == nil {
+		// write it to the toDB
+		database.DbwUpdate(toDB, "BackupTime", bkupTime)
+	} else {
+		log.Println("BackupRoomUsage:ERROR: Failed to copy backup time from=", fromDB, " to=", toDB, " : err=", err)
+	}
+
+	// lastly reset the current room usage
+	// 0 the TotHours and Guest count
+	resArray, err := database.DbwReadAll(roomUsageEntity)
+	if err != nil {
+		log.Println(`BackupStaffHours:ERROR: db readall: err=`, err)
+		return
+	}
+
+	for _, v := range resArray {
+		vm := v.(map[string]interface{})
+		_, exists := vm["RoomNum"]
+		if !exists {
+			continue
+		}
+
+		(vm)["TotHours"] = 00
+		(vm)["TotNumGuests"] = int(0)
+		if err := database.DbwUpdate(roomUsageEntity, "", &vm); err != nil {
+			log.Println(`BackupStaffHours:ERROR: db update: err=`, err)
+		}
+	}
+
+	nowStr, _ := misc.TimeNow()
+	tstamp := map[string]interface{}{"BackupTime": nowStr}
+	if err := database.DbwUpdate(roomUsageEntity, "BackupTime", &tstamp); err != nil {
+		log.Println(`BackupStaffHours:ERROR: db update timestamp: err=`, err)
+	}
+
+	http.Redirect(w, r, "/desk/report_room_usage", http.StatusFound)
 }

@@ -88,7 +88,11 @@ func xlateToRoomStatus(val map[string]interface{}) *RoomState {
 	}
 	numg := int(1)
 	if num, exists := val["NumGuests"]; exists {
-		numg = num.(int)
+		if nf, ok := num.(float64); ok {
+			numg = int(nf)
+		} else if ni, ok := num.(int); ok {
+			numg = ni
+		}
 	}
 	dur := ""
 	if str, exists := val["Duration"]; exists {
@@ -305,20 +309,41 @@ func updateRoomStatus(room string, rs RoomState) {
 	mutex.Unlock()
 }
 
-func calcDiffTime(ciTime, coTime string) float64 {
+// returns <real usage hours>, <expected usage hours>
+func calcDiffTime(ciTime, coTime string) (float64, float64) {
+
+	_, nowTime := misc.TimeNow() // real checkout time
+
 	// convert each string to Time and get the diff
+
+	// expected check out time
 	clockoutTime, err := time.ParseInLocation(staff.DateTimeLongForm, coTime, misc.GetLocale())
 	if err != nil {
-		return 0
+		return 0, 0
 	}
 
 	clockinTime, err := time.ParseInLocation(staff.DateTimeLongForm, ciTime, misc.GetLocale())
 	if err != nil {
-		return 0
+		return 0, 0
 	}
 
-	dur := clockoutTime.Sub(clockinTime)
-	return dur.Hours()
+	expDur := clockoutTime.Sub(clockinTime)
+	realDur := nowTime.Sub(clockinTime)
+
+	log.Println("FIX calcdifftime: ci=", clockinTime, " : co=", clockoutTime, " : now=", nowTime)
+
+	// check if real checkout time significantly different than expected checkout time
+	gracePeriodMinutes := int(15) // TODO should be configurable
+	durDiff := realDur - expDur
+	diffMinutes := int(durDiff.Minutes())
+	if diffMinutes > gracePeriodMinutes {
+		log.Println("room_status.caldDiffTime:WARN: Checkout time surpassed grace period=",
+			gracePeriodMinutes, " : actual minutes past expected checkout time=", diffMinutes)
+		return realDur.Hours(), expDur.Hours()
+	}
+
+	log.Println("FIX calcdifftime: durdiff=", durDiff, " : diffmins=", diffMinutes)
+	return realDur.Hours(), expDur.Hours()
 }
 
 func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetails *psession.SessionDetails) error {
@@ -331,7 +356,12 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	}
 
 	// get the number guests and room usage times
-	num, _ := (*rs)["NumGuests"].(int)
+	num := int(0)
+	if ng, ok := (*rs)["NumGuests"].(int); ok {
+		num = ng
+	} else if ng, ok := (*rs)["NumGuests"].(float64); ok {
+		num = int(ng)
+	}
 	ciTime, _ := (*rs)["CheckinTime"].(string)
 	coTime, _ := (*rs)["CheckoutTime"].(string)
 
@@ -365,18 +395,29 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 		ru := map[string]interface{}{
 			"RoomNum":      room,
 			"TotNumGuests": int(0),
-			"TotHours":     0,
+			"TotHours":     float64(0),
 		}
 		rs = &ru
 		key = room
 	}
 
-	totGuestCnt := num + (*rs)["TotNumGuests"].(int)
+	totGuestCnt := int(0)
+	if tgCnt, ok := (*rs)["TotNumGuests"].(int); ok {
+		totGuestCnt = tgCnt
+	} else if tgCnt, ok := (*rs)["TotNumGuests"].(float64); ok {
+		totGuestCnt = int(tgCnt)
+	}
+	totGuestCnt = num + totGuestCnt
 	(*rs)["TotNumGuests"] = totGuestCnt
 	// calculate the hours of room usage
-	hours := calcDiffTime(ciTime, coTime)
-	totHours := hours + (*rs)["TotHours"].(float64)
-	(*rs)["TotHours"] = totHours
+	hours, _ := calcDiffTime(ciTime, coTime)
+	totHours := float64(0)
+	if th, ok := (*rs)["TotHours"].(float64); ok {
+		totHours = th
+	} else if th, ok := (*rs)["TotHours"].(int); ok {
+		totHours = float64(th)
+	}
+	(*rs)["TotHours"] = totHours + hours
 	err = database.DbwUpdate(roomUsageEntity, key, rs)
 	if err != nil {
 		log.Println("checkout:ERROR: Failed to update room usage for room=", room, " : err=", err)
@@ -576,6 +617,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	usageList := make([]RoomUsage, 0)
 	for _, v := range resArray {
 		vm := v.(map[string]interface{})
+		log.Println("FIX rptroomusage: vm=", vm)
 		id := ""
 		name, exists := vm["RoomNum"]
 		if !exists {
@@ -593,13 +635,15 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		totHours := float64(0)
-		if num, exists := vm["TotNumHours"]; exists {
-			totHours = num.(float64)
+		if num, ok := vm["TotHours"].(float64); ok {
+			totHours = num
 		}
 
 		guestCnt := int(0)
-		if num, exists := vm["TotNumGuests"]; exists {
-			guestCnt = int(num.(float64))
+		if num, ok := vm["TotNumGuests"].(int); ok {
+			guestCnt = num
+		} else if num, ok := vm["TotNumGuests"].(float64); ok {
+			guestCnt = int(num)
 		}
 
 		rusage := RoomUsage{
@@ -607,6 +651,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 			TotNumGuests: guestCnt,
 			TotHours:     totHours,
 		}
+		log.Println("FIX rptroomusage: rusage=", rusage)
 		usageList = append(usageList, rusage)
 	}
 
@@ -617,8 +662,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 		timeStamp,
 	}
 
-	err = t.Execute(w, &tblData)
-	if err != nil {
+	if err = t.Execute(w, &tblData); err != nil {
 		log.Println("ReportRoomUsage:ERROR: could not execute template: err=", err)
 		sessDetails.Sess.Message = "Failed to report room usage"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
@@ -649,7 +693,6 @@ func getRoomUsageFromMap(ruMap map[string]interface{}) *map[string]interface{} {
 	}
 
 	ru := map[string]interface{}{
-		//emp := EmpHours{
 		"RoomNum":      id,
 		"TotHours":     totHours,
 		"TotNumGuests": gCnt,
@@ -755,7 +798,7 @@ func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		(vm)["TotHours"] = 00
+		(vm)["TotHours"] = float64(0)
 		(vm)["TotNumGuests"] = int(0)
 		if err := database.DbwUpdate(roomUsageEntity, "", &vm); err != nil {
 			log.Println(`BackupStaffHours:ERROR: db update: err=`, err)

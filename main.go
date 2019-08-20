@@ -35,6 +35,13 @@ func signout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uVal := sess.Values["user"]
+	if uVal == nil {
+		// no user logged in for the session
+		log.Println("signout:WARN: No user session to log user out=", sess)
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
+
 	// update the employee report record
 	staff.UpdateEmployeeHours(sess.Values["user"].(string), false, 12, psession.Sess_attrs(r))
 

@@ -2,7 +2,7 @@
 
 <h1>Room Usage</h1>
 
-{{if .Sess.Role "Manager"}}
+{{if eq .Sess.Role "Manager"}}
 <p><h2>Hello {{.Sess.User}}</h2></p>
 
 <p><h3>{{.Sess.Role}} Page</h3></p>

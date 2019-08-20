@@ -20,8 +20,10 @@ var myVar = setInterval(roomStateTimer, 1000 * 300);
 roomStateTimer();
 </script>
 
+{{if and .Sess.Auth .Sess.User}}
 <div id="roomstati" class="roomstati">
 </div>
+{{end}}
 
   <h1>Front Desk</h1>
 {{if and .Sess.Auth .Sess.User}}

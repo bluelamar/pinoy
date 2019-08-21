@@ -47,3 +47,23 @@ func InitTime(timeZoneName string, hoursEastOfUTC time.Duration) {
 		timeLocale = loc
 	}
 }
+
+func XtractIntField(fieldName string, vmap *map[string]interface{}) int {
+	num := int(0)
+	if ival, ok := (*vmap)[fieldName].(int); ok {
+		num = ival
+	} else if fval, ok := (*vmap)[fieldName].(float64); ok {
+		num = int(fval)
+	}
+	return num
+}
+
+func XtractFloatField(fieldName string, vmap *map[string]interface{}) float64 {
+	num := float64(0)
+	if fval, ok := (*vmap)[fieldName].(float64); ok {
+		num = fval
+	} else if ival, ok := (*vmap)[fieldName].(int); ok {
+		num = float64(ival)
+	}
+	return num
+}

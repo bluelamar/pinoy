@@ -19,6 +19,7 @@ type PinoyConfig struct {
 	CookieSecretDbEntity      string // if set, retrieve cookie secret from thid db entity
 	StatsMonitorInterval      int    // minutes, report server stats
 	RoomStatusMonitorInterval int    // minutes, check room status for rooms to be checked out
+	CheckoutGracePeriod int    // minutes, grace period for customer to checkout
 }
 
 func LoadConfig(fpath string) (*PinoyConfig, error) {

@@ -10,5 +10,6 @@
 	"CookieSecret": "something-very-secret",
 	"CookieSecretDbEntity": "",
 	"StatsMonitorInterval": 60,
-	"RoomStatusMonitorInterval": 2
+	"RoomStatusMonitorInterval": 2,
+	"CheckoutGracePeriod": 15
 }

@@ -36,3 +36,13 @@ div.roomstati {
   border: 2px solid powderblue;
   font-size: 140%;
 }
+.button {
+  color: black;
+  background-color: hsl(120,100%,75%);
+  font-size: 120%;
+}
+.litegreen {
+  color: black;
+  background-color: hsl(120, 100%, 90%);
+  font-size: 100%;
+}

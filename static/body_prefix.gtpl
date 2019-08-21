@@ -3,13 +3,12 @@
 Pinoy Lodge
 </div>
 <p>
-<a href="/frontpage">Front Desk</a>
 
 {{if and .Sess .Sess.Auth}}
 
 <div class="account-buttons">
   <div id="entrance">
-    <a id="sign-out" class="button" href="/signout">Sign Out</a>
+    <a id="sign-out" class="button litegreen" href="/signout">Sign Out</a>
   </div>
 </div>
 
@@ -22,6 +21,10 @@ Pinoy Lodge
 </div>
 
 {{end}}
+
+<p>
+<a class="button" href="/frontpage">Front Desk</a>
+</p>
 
 {{$msgLen:=.Sess.Role}}
 {{if .Sess}}

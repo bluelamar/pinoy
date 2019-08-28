@@ -288,6 +288,8 @@ func (pDbInt *CDBInterface) DbwUpdate(entity, key string, rMap *map[string]inter
 	if ok && key == "" {
 		_, err = pDbInt.Update(entity, id.(string), (*rMap)["_rev"].(string), (*rMap))
 	} else {
+		// remove _rev if it exists
+		delete((*rMap), "_rev")
 		_, err = pDbInt.Create(entity, key, (*rMap))
 	}
 

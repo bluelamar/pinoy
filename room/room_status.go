@@ -26,6 +26,11 @@ const (
 	BookedStatus = "booked"
 	OpenStatus   = "open"
 	LimboStatus  = "limbo"
+
+	roomUsageRN  = "RoomNum"
+	roomUsageTNG = "TotNumGuests"
+	roomUsageTH  = "TotHours"
+	roomUsageNTO = "NumTimesOccupied"
 )
 
 type RoomUsage struct {
@@ -74,7 +79,7 @@ var mutex sync.Mutex
 
 func xlateToRoomStatus(val map[string]interface{}) *RoomState {
 	rn := ""
-	if str, exists := val["RoomNum"]; exists {
+	if str, exists := val[roomUsageRN]; exists {
 		rn = str.(string)
 	} else {
 		return nil
@@ -138,7 +143,7 @@ func loadRoomsState() error {
 			if rs == nil {
 				continue
 			}
-			rn := val["RoomNum"].(string)
+			rn := val[roomUsageRN].(string)
 			roomsMap[rn] = *rs
 		}
 		roomStateCurrent = roomsMap
@@ -154,7 +159,7 @@ func putNewRoomStatus(roomStatus map[string]interface{}) error {
 		return errors.New("room status translation")
 	}
 
-	updateRoomStatus(roomStatus["RoomNum"].(string), *rs)
+	updateRoomStatus(roomStatus[roomUsageRN].(string), *rs)
 	return nil
 }
 
@@ -379,23 +384,23 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	if err != nil {
 		// lets make a new usage object
 		ru := map[string]interface{}{
-			"RoomNum":          room,
-			"TotNumGuests":     int(0),
-			"TotHours":         float64(0),
-			"NumTimesOccupied": int(0),
+			roomUsageRN:  room,
+			roomUsageTNG: int(0),
+			roomUsageTH:  float64(0),
+			roomUsageNTO: int(0),
 		}
 		rs = &ru
 		key = room
 	}
 
-	totGuestCnt := num + misc.XtractIntField("TotNumGuests", rs)
-	(*rs)["TotNumGuests"] = totGuestCnt
+	totGuestCnt := num + misc.XtractIntField(roomUsageTNG, rs)
+	(*rs)[roomUsageTNG] = totGuestCnt
 
-	(*rs)["NumTimesOccupied"] = 1 + misc.XtractIntField("NumTimesOccupied", rs)
+	(*rs)[roomUsageNTO] = 1 + misc.XtractIntField(roomUsageNTO, rs)
 
 	// calculate the hours of room usage
 	hours, _ := calcDiffTime(ciTime, coTime)
-	(*rs)["TotHours"] = hours + misc.XtractFloatField("TotHours", rs)
+	(*rs)[roomUsageTH] = hours + misc.XtractFloatField(roomUsageTH, rs)
 
 	err = database.DbwUpdate(roomUsageEntity, key, rs)
 	if err != nil {
@@ -597,7 +602,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	for _, v := range resArray {
 		vm := v.(map[string]interface{})
 		id := ""
-		name, exists := vm["RoomNum"]
+		name, exists := vm[roomUsageRN]
 		if !exists {
 			// check for timestamp record
 			name, exists = vm["BackupTime"]
@@ -612,11 +617,11 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		totHours := misc.XtractFloatField("TotHours", &vm)
+		totHours := misc.XtractFloatField(roomUsageTH, &vm)
 
-		guestCnt := misc.XtractIntField("TotNumGuests", &vm)
+		guestCnt := misc.XtractIntField(roomUsageTNG, &vm)
 
-		numTimesOcc := misc.XtractIntField("NumTimesOccupied", &vm)
+		numTimesOcc := misc.XtractIntField(roomUsageNTO, &vm)
 
 		rusage := RoomUsage{
 			RoomNum:          id,
@@ -641,9 +646,9 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getRoomUsageFromMap(ruMap map[string]interface{}) *map[string]interface{} {
+func filterRoomUsageFromMap(ruMap map[string]interface{}) *map[string]interface{} {
 	id := ""
-	name, exists := ruMap["RoomNum"]
+	name, exists := ruMap[roomUsageRN]
 	if !exists {
 		return nil
 	}
@@ -653,56 +658,44 @@ func getRoomUsageFromMap(ruMap map[string]interface{}) *map[string]interface{} {
 		return nil
 	}
 
-	gCnt := misc.XtractIntField("TotNumGuests", &ruMap)
-
-	totHours := misc.XtractFloatField("TotHours", &ruMap)
-
-	numTimesOcc := misc.XtractIntField("NumTimesOccupied", &ruMap)
-
-	ru := map[string]interface{}{
-		"RoomNum":          id,
-		"TotHours":         totHours,
-		"TotNumGuests":     gCnt,
-		"NumTimesOccupied": numTimesOcc,
-	}
-	return &ru
+	return &ruMap
 }
-func cleanupHours(dbName string) error {
+func cleanupUsage(dbName string) error {
 	// remove all entities from specified db
 	resArray, err := database.DbwReadAll(dbName)
 	if err != nil {
-		log.Println(`room.cleanupHours:ERROR: db readall: err=`, err)
+		log.Println(`room.cleanupUsage:ERROR: db readall: err=`, err)
 		return err
 	}
 
 	for _, v := range resArray {
 		vm := v.(map[string]interface{})
-		ru := getRoomUsageFromMap(vm)
+		ru := filterRoomUsageFromMap(vm)
 		if ru == nil {
 			continue
 		}
 		if err := database.DbwDelete(dbName, ru); err != nil {
-			log.Println(`room.cleanupHours:ERROR: db delete: err=`, err)
+			log.Println(`room.cleanupUsage:ERROR: db delete: err=`, err, ` : room-usage=`, ru)
 		}
 	}
 	return nil
 }
-func copyHours(fromDB, toDB string) error {
+func copyUsage(fromDB, toDB string) error {
 	// copy each entity from fromDB to the toDB
 	resArray, err := database.DbwReadAll(fromDB)
 	if err != nil {
-		log.Println(`room.copyHours:ERROR: db readall: err=`, err)
+		log.Println(`room.Usage:ERROR: db readall: err=`, err)
 		return err
 	}
 	for _, v := range resArray {
 		vm := v.(map[string]interface{})
-		ru := getRoomUsageFromMap(vm)
+		ru := filterRoomUsageFromMap(vm)
 		if ru == nil {
 			continue
 		}
-		err = database.DbwUpdate(toDB, (*ru)["RoomNum"].(string), ru)
+		err = database.DbwUpdate(toDB, (*ru)[roomUsageRN].(string), ru)
 		if err != nil {
-			log.Println("room.copyHours:ERROR: Failed to update db for room usage for room=", (*ru)["RooNum"].(string), " : err=", err)
+			log.Println("room.copyUsage:ERROR: Failed to update db=", toDB, " : for room-usage=", ru, " : err=", err)
 			return err
 		}
 	}
@@ -720,12 +713,12 @@ func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	toDB := staff.ComposeDbName(roomUsageEntity, "c")
-	if err := cleanupHours(toDB); err != nil {
+	if err := cleanupUsage(toDB); err != nil {
 		log.Println("BackupRoomUsage:ERROR: Failed to cleanup db=", toDB, " : err=", err)
 	}
 	fromDB := staff.ComposeDbName(roomUsageEntity, "b")
-	if err := copyHours(fromDB, toDB); err != nil {
-		log.Println("BackupRoomUsage:ERROR: Failed to copy hours from db=", fromDB, " to=", toDB, " : err=", err)
+	if err := copyUsage(fromDB, toDB); err != nil {
+		log.Println("BackupRoomUsage:ERROR: Failed to copy usage from db=", fromDB, " to=", toDB, " : err=", err)
 	}
 
 	bkupTime, err := database.DbwRead(fromDB, "BackupTime")
@@ -737,11 +730,11 @@ func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	toDB = fromDB
-	if err := cleanupHours(toDB); err != nil {
+	if err := cleanupUsage(toDB); err != nil {
 		log.Println("BackupRoomUsage:ERROR: Failed to cleanup db=", toDB, " : err=", err)
 	}
-	if err := copyHours(roomUsageEntity, toDB); err != nil {
-		log.Println("BackupRoomUsage:ERROR: Failed to copy hours from db=", roomUsageEntity, " to=", toDB, " : err=", err)
+	if err := copyUsage(roomUsageEntity, toDB); err != nil {
+		log.Println("BackupRoomUsage:ERROR: Failed to copy usage from db=", roomUsageEntity, " to=", toDB, " : err=", err)
 	}
 	bkupTime, err = database.DbwRead(roomUsageEntity, "BackupTime")
 	if err == nil {
@@ -761,24 +754,34 @@ func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 
 	for _, v := range resArray {
 		vm := v.(map[string]interface{})
-		_, exists := vm["RoomNum"]
+		_, exists := vm[roomUsageRN]
 		if !exists {
 			continue
 		}
 
-		(vm)["TotHours"] = float64(0)
-		(vm)["TotNumGuests"] = int(0)
-		(vm)["NumTimesOccupied"] = int(0)
+		(vm)[roomUsageTH] = float64(0)
+		(vm)[roomUsageTNG] = int(0)
+		(vm)[roomUsageNTO] = int(0)
 		if err := database.DbwUpdate(roomUsageEntity, "", &vm); err != nil {
 			log.Println(`BackupStaffHours:ERROR: db update: err=`, err)
 		}
 	}
 
 	nowStr, _ := misc.TimeNow()
-	tstamp := map[string]interface{}{"BackupTime": nowStr}
-	if err := database.DbwUpdate(roomUsageEntity, "BackupTime", &tstamp); err != nil {
-		log.Println(`BackupStaffHours:ERROR: db update timestamp: err=`, err)
+
+	bkupTime, err = database.DbwRead(roomUsageEntity, "BackupTime")
+	if err == nil {
+		// write it to the toDB
+		(*bkupTime)["BackupTime"] = nowStr
+		if err := database.DbwUpdate(roomUsageEntity, "", bkupTime); err != nil {
+			log.Println("BackupRoomUsage:ERROR: Failed to update backup time for=", roomUsageEntity, " : err=", err)
+		}
+	} else {
+		tstamp := map[string]interface{}{"BackupTime": nowStr}
+		if err := database.DbwUpdate(roomUsageEntity, "BackupTime", &tstamp); err != nil {
+			log.Println("BackupRoomUsage:ERROR: Failed to create backup time for=", roomUsageEntity, " : err=", err)
+		}
 	}
 
-	http.Redirect(w, r, "/desk/report_room_usage", http.StatusFound)
+	http.Redirect(w, r, "/manager/report_room_usage", http.StatusFound)
 }

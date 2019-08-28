@@ -357,9 +357,19 @@ func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 	}
 
 	nowStr, _ := misc.TimeNow()
-	tstamp := map[string]interface{}{"BackupTime": nowStr}
-	if err := database.DbwUpdate(StaffHoursEntity, "BackupTime", &tstamp); err != nil {
-		log.Println(`BackupStaffHours:ERROR: db update timestamp: err=`, err)
+
+	bkupTime, err = database.DbwRead(StaffHoursEntity, "BackupTime")
+	if err == nil {
+		// write it to the toDB
+		(*bkupTime)["BackupTime"] = nowStr
+		if err := database.DbwUpdate(StaffHoursEntity, "", bkupTime); err != nil {
+			log.Println("BackupStaffHours:ERROR: Failed to update backup time for=", StaffHoursEntity, " : err=", err)
+		}
+	} else {
+		tstamp := map[string]interface{}{"BackupTime": nowStr}
+		if err := database.DbwUpdate(StaffHoursEntity, "BackupTime", &tstamp); err != nil {
+			log.Println("BackupStaffHours:ERROR: Failed to create backup time for=", StaffHoursEntity, " : err=", err)
+		}
 	}
 
 	http.Redirect(w, r, "/desk/report_staff_hours", http.StatusFound)

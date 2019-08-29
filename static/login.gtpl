@@ -12,6 +12,6 @@
     <input type="submit" name="commit" value="Login" />
     </div>
   </form>
-  <p><a href="/forgot_password/">Forgot password?</a></p>
+  <p><b>Forgot password? Contact your manager to have it reset please.</b></p>
 </body>
 </html>

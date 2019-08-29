@@ -8,7 +8,7 @@
 <p><h3>{{.Sess.Role}} Page</h3></p>
 
 {{if eq .Sess.Role "Manager"}}
-<p><a id="update_room" class="button" href="/manager/upd_room?update=add">Add Room</a></p>
+<p><a id="update_room" class="pinoylink" href="/manager/upd_room?update=add">Add Room</a></p>
 
 <table>
 <tr>

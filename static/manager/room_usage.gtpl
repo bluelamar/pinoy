@@ -7,13 +7,13 @@
 
 <p><h3>{{.Sess.Role}} Page</h3></p>
 
-<p><a id="backup" class="button" href="/manager/backup_room_usage">Backup Room Usage and Reset</a></p>
+<p><a id="backup" class="pinoylink" href="/manager/backup_room_usage">Backup Room Usage and Reset</a></p>
 
-<p><a id="backup" class="button" href="/manager/report_room_usage?bkup=b">Show Previous Backup Room Usage</a></p>
+<p><a id="backup" class="pinoylink" href="/manager/report_room_usage?bkup=b">Show Previous Backup Room Usage</a></p>
 
-<p><a id="backup" class="button" href="/manager/report_room_usage?bkup=c">Show Oldest Backup Room Usage</a></p>
+<p><a id="backup" class="pinoylink" href="/manager/report_room_usage?bkup=c">Show Oldest Backup Room Usage</a></p>
 {{if ne .Title "Current Room Usage"}}
-  <p><a id="backup" class="button" href="/manager/report_room_usage">Show Current Room Usage</a></p>
+  <p><a id="backup" class="pinoylink" href="/manager/report_room_usage">Show Current Room Usage</a></p>
 {{end}}
 
 <p><h3>{{.Title}}</h3></p>

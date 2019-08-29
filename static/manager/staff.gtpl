@@ -7,7 +7,7 @@
 <p><h3>{{.Sess.Role}} Page</h3></p>
 
 {{if eq .Sess.Role "Manager"}}
-<p><a id="update_staff" class="button" href="/manager/add_staff">Add New Employee</a></p>
+<p><a id="update_staff" class="pinoylink" href="/manager/add_staff">Add New Employee</a></p>
 
 <table>
 <tr>

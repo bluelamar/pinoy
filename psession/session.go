@@ -91,18 +91,18 @@ func GetUserSession(w http.ResponseWriter, r *http.Request) (*sessions.Session, 
 	return sess, nil
 }
 
-func Sess_attrs(r *http.Request) *PinoySession {
+func SessAttrs(r *http.Request) *PinoySession {
 
 	session, err := store.Get(r, CookieNameSID)
 	if err != nil {
-		log.Println("sess_attrs: no cookie in store: err=", err)
+		log.Println("SessAttrs: no cookie in store: err=", err)
 	}
 	// Check if user is authenticated
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
 		//http.Error(w, "Forbidden", http.StatusForbidden)
 		session.Values["authenticated"] = false
 	}
-	//fmt.Printf("sess_attrs:FIX: auth=%t\n", session.Values["authenticated"].(bool))
+	//fmt.Printf("SessAttrs:FIX: auth=%t\n", session.Values["authenticated"].(bool))
 
 	user := ""
 	if sess_user, ok := session.Values["user"].(string); ok {
@@ -123,9 +123,9 @@ func Sess_attrs(r *http.Request) *PinoySession {
 	return sess
 }
 
-func Get_sess_details(r *http.Request, title, desc string) *SessionDetails {
+func GetSessDetails(r *http.Request, title, desc string) *SessionDetails {
 
-	sess := Sess_attrs(r)
+	sess := SessAttrs(r)
 
 	pageContent := &PageContent{
 		title,

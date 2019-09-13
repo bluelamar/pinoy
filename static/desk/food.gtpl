@@ -8,7 +8,7 @@
 <p><h3>{{.Sess.Role}} Page</h3></p>
 
 {{if eq .Sess.Role "Manager"}}
-<p><a id="update_food" class="button" href="/manager/update_food">Add Items</a></p>
+<p><a id="update_food" class="button" href="/manager/upd_food">Add Items</a></p>
 {{end}}
 
 {{if or (eq .Sess.Role "Manager") (eq .Sess.Role "Desk")}}
@@ -22,12 +22,12 @@
 {{end}}
 </tr>
 {{$role:=.Sess.Role}}
-{{range .FoodData}}
+{{range .Items}}
 <tr>
-<td>{{.Item}}</td><td>{{.Size}}</td><td>{{.Price}}</td><td><a id="purchase" class="button" href="/desk/purchase?item={{.Item}}&size={{.Size}}&price={{.Price}}">Purchase</a></td>
+<td>{{.Item}}</td><td>{{.Size}}</td><td>{{.Price}}</td><td><a id="purchase" class="button" href="/desk/purchase?item={{.ItemID}}">Purchase</a></td>
 {{if eq $role "Manager"}}
-<td><a id="upd_food" class="button" href="/manager/upd_food?item={{.Id}}&update=true">Update Item</a></td>
-<td><a id="del_food" class="button" href="/manager/upd_food?item={{.Id}}&update=delete">Delete Item</a></td>
+<td><a id="upd_food" class="button" href="/manager/upd_food?item={{.ItemID}}&update=true">Update Item</a></td>
+<td><a id="del_food" class="button" href="/manager/upd_food?item={{.ItemID}}&update=delete">Delete Item</a></td>
 {{end}}
 </tr>
 {{else}}

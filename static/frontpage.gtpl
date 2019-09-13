@@ -42,7 +42,7 @@ roomStateTimer();
       <li><a href="/manager/staff" class="pinoylink">Add or Update Staff</a></li>
       <li><a href="/manager/room_rates" class="pinoylink">Add or Update Room Rates</a></li>
       <li><a href="/manager/rooms" class="pinoylink">Add or Update Rooms</a></li>
-      <li><a href="/manager/food" class="pinoylink">Add or Update Food Items</a></li>
+      <li><a href="/manager/upd_food" class="pinoylink">Add or Update Food Items</a></li>
       <li><a href="/manager/svc_stats" class="pinoylink">Server Statistics</a></li>
       {{end}}
     </ul>

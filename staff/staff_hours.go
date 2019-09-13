@@ -49,7 +49,7 @@ func ComposeDbName(prefix, suffix string) string {
 
 func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
-	sessDetails := psession.Get_sess_details(r, "Staff Hours", "Staff Hours page to Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Staff Hours", "Staff Hours page to Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
@@ -293,7 +293,7 @@ func copyHours(fromDB, toDB string) error {
 func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 	// check session expiration and authorization
-	sessDetails := psession.Get_sess_details(r, "Backup and Reset Employee Hours", "Backup and Reset Employee Hours page of Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Backup and Reset Employee Hours", "Backup and Reset Employee Hours page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
@@ -395,7 +395,7 @@ func DeleteStaffHoursEntity(userId string) error {
 func UpdateStaffHours(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 	// check session expiration and authorization
-	sessDetails := psession.Get_sess_details(r, "Update Employee Hours", "Update Employee Hours page of Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Update Employee Hours", "Update Employee Hours page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)

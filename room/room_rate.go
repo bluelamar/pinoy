@@ -42,7 +42,7 @@ func (a ByTUnit) Less(i, j int) bool { return a[i].TUnit < a[j].TUnit }
 
 func RoomRates(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
-	sessDetails := psession.Get_sess_details(r, "Room Rates", "Room Rates page to Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Room Rates", "Room Rates page to Pinoy Lodge")
 	if r.Method != "GET" {
 		log.Println("room_rates: bad http method: should only be a GET")
 		http.Error(w, "Bad request", http.StatusBadRequest)
@@ -101,7 +101,7 @@ func RoomRates(w http.ResponseWriter, r *http.Request) {
 
 func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
-	sessDetails := psession.Get_sess_details(r, "Update Room Rate", "Update Room Rate page of Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Update Room Rate", "Update Room Rate page of Pinoy Lodge")
 	if r.Method == "GET" {
 
 		rateClass := ""

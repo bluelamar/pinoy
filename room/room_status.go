@@ -207,7 +207,7 @@ func GetRoomStati(roomStatus string, durLimit time.Duration) ([]RoomState, error
 
 func RoomStatus(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
-	sessDetails := psession.Get_sess_details(r, "Room Status", "Room Status page for Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Room Status", "Room Status page for Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
@@ -414,7 +414,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 
 	// check session expiration and authorization
-	sessDetails := psession.Get_sess_details(r, "Registration", "Register page of Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Registration", "Register page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
@@ -433,8 +433,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		room := rooms[0]
 
 		regAction := ""
-		regActions, ok := r.URL.Query()["reg"]
-		if ok && len(regActions[0]) > 1 {
+		if regActions, ok := r.URL.Query()["reg"]; ok {
 			regAction = regActions[0]
 		}
 
@@ -447,15 +446,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		}
 
 		rate := ""
-		rates, ok := r.URL.Query()["rate"]
-		if ok {
+		if rates, ok := r.URL.Query()["rate"]; ok {
 			rate = rates[0]
 		}
 
 		// get the RateClass for the room in order to get the options
 		rateMap, err := database.DbwRead(RoomRatesEntity, rate)
 		if err != nil {
-			log.Println("register:ERROR: Failed to read rate class=", rate, " : err=", rate, err)
+			log.Println("register:ERROR: Failed to read rate class=", rate, " : err=", err)
 			sessDetails.Sess.Message = "Failed to register - bad or missing room rate"
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
@@ -490,7 +488,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		}
 		err = t.Execute(w, regData)
 		if err != nil {
-			log.Println("register:ERROR: Failed to read room status for room=", room, " : err=", err)
+			log.Println("register:ERROR: Failed to exec register page for room=", room, " : err=", err)
 			sessDetails.Sess.Message = "Failed to make register page: room=" + room
 			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		}
@@ -556,7 +554,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
-	sessDetails := psession.Get_sess_details(r, "Room Usage", "Room Usage page to Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Room Usage", "Room Usage page to Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
@@ -705,7 +703,7 @@ func copyUsage(fromDB, toDB string) error {
 func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 	// check session expiration and authorization
-	sessDetails := psession.Get_sess_details(r, "Backup and Reset Room Usage", "Backup and Reset Room Usage page of Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Backup and Reset Room Usage", "Backup and Reset Room Usage page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)

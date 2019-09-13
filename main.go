@@ -43,7 +43,7 @@ func signout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update the employee report record
-	staff.UpdateEmployeeHours(sess.Values["user"].(string), false, 12, psession.Sess_attrs(r))
+	staff.UpdateEmployeeHours(sess.Values["user"].(string), false, 12, psession.SessAttrs(r))
 
 	sess.Options.MaxAge = -1
 	sess.Values["authenticated"] = false
@@ -69,7 +69,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sess := psession.Sess_attrs(r)
+		sess := psession.SessAttrs(r)
 		pageContent := &psession.PageContent{
 			PageTitle: "Login",
 			PageDescr: "Login for Pinoy Lodge",
@@ -131,7 +131,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		sess.Save(r, w)
 
 		// update the employee report record - dont wait for it
-		go staff.UpdateEmployeeHours(username[0], true, 12, psession.Sess_attrs(r))
+		go staff.UpdateEmployeeHours(username[0], true, 12, psession.SessAttrs(r))
 
 		misc.IncrLoginCnt()
 		log.Println("signin: logged in=", username[0], " : auth=", sess.Values["authenticated"].(bool))
@@ -146,7 +146,7 @@ func frontpage(w http.ResponseWriter, r *http.Request) {
 		log.Println("frontpage:ERROR: Failed to parse template: err=", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
-		sessDetails := psession.Get_sess_details(r, "Front page", "Front page to Pinoy Lodge")
+		sessDetails := psession.GetSessDetails(r, "Front page", "Front page to Pinoy Lodge")
 		if err = t.Execute(w, sessDetails); err != nil {
 			log.Println("frontpage:ERROR: Failed to execute template: err=", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)

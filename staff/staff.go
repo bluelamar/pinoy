@@ -37,7 +37,7 @@ type UpdateEmployee struct {
 
 func Staff(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
-	sessDetails := psession.Get_sess_details(r, "Staff", "Staff page to Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Staff", "Staff page to Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
@@ -131,7 +131,7 @@ func Staff(w http.ResponseWriter, r *http.Request) {
 
 func AddStaff(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
-	sessDetails := psession.Get_sess_details(r, "Add Employee", "Add Employee page of Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Add Employee", "Add Employee page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
@@ -172,7 +172,7 @@ func AddStaff(w http.ResponseWriter, r *http.Request) {
 func UpdStaff(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 	// check session expiration and authorization
-	sessDetails := psession.Get_sess_details(r, "Update Employee", "Update Employee page of Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Update Employee", "Update Employee page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)

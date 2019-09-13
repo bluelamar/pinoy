@@ -34,7 +34,7 @@ type RoomDetailEntry struct {
 
 func Rooms(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
-	sessDetails := psession.Get_sess_details(r, "Rooms", "Rooms page to Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Rooms", "Rooms page to Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
@@ -95,7 +95,7 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 
 func UpdRoom(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
-	sessDetails := psession.Get_sess_details(r, "Update Room", "Update Room page of Pinoy Lodge")
+	sessDetails := psession.GetSessDetails(r, "Update Room", "Update Room page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
@@ -128,15 +128,15 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 			var err error
 			rMap, err = database.DbwRead(RoomsEntity, room)
 			if err != nil {
-				log.Println("upd_room: Invalid Room specified: err=", err)
-				sessDetails.Sess.Message = `Internal error for room rates`
+				log.Println("upd_room: Invalid Room=", room, " : err=", err)
+				sessDetails.Sess.Message = `Internal error for rooms`
 				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
 				return
 			}
 		}
 
 		if deleteRoom {
-			if room == "" {
+			if rMap == nil {
 				log.Println("upd_room:delete: Room number not specified")
 				sessDetails.Sess.Message = `Room number not specified`
 				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
@@ -168,7 +168,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		if rMap != nil {
 			nbs, err := strconv.Atoi((*rMap)["NumBeds"].(string))
 			if err != nil {
-				log.Println("upd_room:ERROR: Failed to comvert num beds: err=", err)
+				log.Println("upd_room:ERROR: Failed to convert num beds: err=", err)
 				sessDetails.Sess.Message = "Failed to Update room: " + room
 				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 				return
@@ -210,7 +210,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		err = t.Execute(w, updData)
 		if err != nil {
 			log.Println("upd_room:ERROR: Failed to exec template: err=", err)
-			sessDetails.Sess.Message = `Internal error in Update Room Rates`
+			sessDetails.Sess.Message = `Internal error in Update Room`
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		}
 	} else {

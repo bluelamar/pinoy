@@ -1,3 +1,21 @@
 
+TODO: update staff_hours to use the new misc.XtractIntField funcs
+
+TODO: room rates - new feature
+- need to specify Price per "Extra Person"
+
+TODO: room rates managers page - fix sorting
+room rates: row sort is funny, "10 Hours" comes before "2 Hour"
+want "2 Hours" to come before "10 Hours"
+
+TODO low priority:
 currently css link header is served by the web svc - may need to change that later to be served by nginx
+
+FIXED: room status BUG
+- checkout guest 
+-- room doesnt show as open right away in register page
+
+DONE: room status page
+- showing rate class, ie. "STANDARD" - they want the Duration, ie. "3 Hours"
+- number of people
 

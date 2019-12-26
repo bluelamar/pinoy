@@ -156,9 +156,12 @@ func frontpage(w http.ResponseWriter, r *http.Request) {
 }
 
 func initDB(cfg *config.PinoyConfig) error {
+	// which db implemnentation are we using?
 	db1 := new(database.CDBInterface)
 	var pDb database.DBInterface = db1
-	err := database.Init(&pDb, cfg)
+	database.SetDB(&pDb)
+	// FIX err := database.Init(&pDb, cfg)
+	err := database.DbwInit(cfg)
 	if err != nil {
 		log.Println("main:ERROR: db init error=", err)
 		//log.Fatal("Failed to create db: ", err)
@@ -166,7 +169,6 @@ func initDB(cfg *config.PinoyConfig) error {
 	}
 
 	log.Println("pinoy:main: db init success")
-	database.SetDB(&pDb)
 	return nil
 }
 

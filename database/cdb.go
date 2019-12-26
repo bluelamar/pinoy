@@ -17,7 +17,6 @@ import (
 )
 
 type CDBInterface struct {
-	DBInterface
 	baseUrl string
 	// cookies []*http.Cookie
 	//authCookie *http.Header
@@ -267,7 +266,7 @@ func (pDbInt *CDBInterface) Find(entity, field, value string) ([]interface{}, er
 	return result["docs"].([]interface{}), nil
 }
 
-func (pDbInt *CDBInterface) DbwDelete(entity string, rMap *map[string]interface{}) error {
+func (pDbInt *CDBInterface) DeleteM(entity string, rMap *map[string]interface{}) error {
 	id, ok := (*rMap)["_id"]
 	if !ok {
 		return errors.New("cdb:missing required id")
@@ -282,7 +281,7 @@ func (pDbInt *CDBInterface) DbwDelete(entity string, rMap *map[string]interface{
 /*
  * Determines to update if _id is present and key is empty, else create entry
  */
-func (pDbInt *CDBInterface) DbwUpdate(entity, key string, rMap *map[string]interface{}) error {
+func (pDbInt *CDBInterface) UpdateM(entity, key string, rMap *map[string]interface{}) error {
 	var err error
 	id, ok := (*rMap)["_id"]
 	if ok && key == "" {

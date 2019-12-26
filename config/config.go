@@ -11,7 +11,7 @@ type PinoyConfig struct {
 	DbName                    string
 	DbPort                    int
 	DbUser                    string
-	DbPwd                     string
+	DbPwd                     string // encrypted - user defined encryption
 	DbCommTimeout             int    // communication timeout in seconds
 	LogOutput                 string // stdout, file
 	LogFile                   string // path name if LogOutput == "file"

@@ -62,8 +62,8 @@ func Encrypt(keyText, clearText string) string {
 }
 
 func HashIt(text string) string {
-	h := md5.New()
-	sum := h.Sum([]byte(text))
-	cryptoText := base64.URLEncoding.EncodeToString(sum)
-	return cryptoText
+        h := md5.New()
+        sum := h.Sum([]byte(text))
+        cryptoText := base64.URLEncoding.EncodeToString(sum)
+        return cryptoText
 }

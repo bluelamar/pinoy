@@ -62,6 +62,24 @@ lint:
 	echo "TODO no lint"
 #	./scripts/make-lint.sh
 
+#
+# dependency management section
+#
+
+.PHONY: create-depends
+create-depends: export GO111MODULE=on
+create-depends:
+	go mod init
+
+.PHONY: upgrade-depends
+upgrade-depends:
+	go get -u ./...
+
+.PHONY: release
+release:
+	go mod tidy
+	go test all
+
 clean:
 	go clean ./...
 	rm -f pinoy pinoy-race .tmp

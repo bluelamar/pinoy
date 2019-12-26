@@ -258,7 +258,7 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 
 		var entry *map[string]interface{}
 		if id == "" {
-			elist, err := database.Find(database.GetDB(), StaffEntity, "Last", lname)
+			elist, err := database.DbwFind(StaffEntity, "Last", lname)
 			if err != nil {
 				log.Println("upd_staff:ERROR: No staff with last name=", lname, " : err=", err)
 				sessDetails.Sess.Message = "No such employee: " + lname

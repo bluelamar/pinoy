@@ -42,7 +42,8 @@ func TestNewDB(t *testing.T) {
 	//PDb = PDb1[0]
 	var dbInt1 database.DBInterface
 	dbInt1 = db1
-	err = database.Init(&dbInt1, cfg)
+	database.SetDB(&dbInt1)
+	err = database.DbwInit(cfg)
 	if err != nil {
 		t.Error(`TestNewDb: database error`, err)
 	}
@@ -50,6 +51,7 @@ func TestNewDB(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
+
 	entity := "testxyz"
 	doc := map[string]interface{}{"bar": "doc"}
 	doc2, err := dbInt.Create(entity, "bar", doc)
@@ -77,13 +79,13 @@ func TestCreate(t *testing.T) {
 		t.Errorf("TestCreate: missing rev")
 	}
 
-	ent_map, err := database.Read(dbInt, entity, id)
+	ent_map, err := database.DbwRead(entity, id)
 	if err != nil {
 		t.Error(`db read error`, err)
 	}
 	t.Logf("read entity=%s id=%s val=%v\n", entity, id, ent_map)
 
-	ent_map, err = database.Read(dbInt, entity, "nosuchid")
+	ent_map, err = database.DbwRead(entity, "nosuchid")
 	if err != nil {
 		t.Logf(`db read nosuchid error=%v\n`, err)
 	} else {
@@ -94,37 +96,37 @@ func TestCreate(t *testing.T) {
 		}
 	}
 
-	resArray, err := database.ReadAll(dbInt, entity)
+	resArray, err := database.DbwReadAll(entity)
 	if err != nil {
 		t.Error(`db readall error`, err)
 	}
 	t.Logf("readall entity=%s val=%v\n", entity, resArray)
 
-	fres, err := database.Find(dbInt, "room_rates", "RateClass", "Small Room")
+	fres, err := database.DbwFind("room_rates", "RateClass", "Small Room")
 	if err != nil {
 		t.Error(`db find error`, err)
 	}
 	t.Logf("find entity=%s val=%v\n", entity, fres)
 
 	t.Log("TestCreate: delete doc2=", doc2)
-	err = dbInt.DbwDelete(entity, doc2)
+	err = database.DbwDelete(entity, doc2)
 	if err != nil {
 		t.Error(`db delete error`, err)
 	}
 
-	ent_map, err = database.Read(dbInt, entity, "3d_shapes")
+	ent_map, err = database.DbwRead(entity, "3d_shapes")
 	if err != nil {
 		t.Logf("db read error: %v\n", err)
 	} else {
 		t.Logf("db read 3d_shaps: %v\n", ent_map)
 		_, found := (*ent_map)["_rev"].(string)
 		if found {
-			dbInt.DbwDelete(entity, ent_map) // FIX "3d_shapes", rev3)
+			database.DbwDelete(entity, ent_map) // FIX "3d_shapes", rev3)
 		}
 	}
 	//doc = map[string]interface{}{"_id": "3d_shapes", "shape": "box"}
 	doc = map[string]interface{}{"shape": "box"}
-	doc2, err = database.Create(dbInt, "testxyz", "3d_shapes", doc)
+	doc2, err = database.DbwCreate("testxyz", "3d_shapes", doc)
 	if err != nil {
 		t.Error(`db save error`, err)
 	}
@@ -143,7 +145,7 @@ func TestCreate(t *testing.T) {
 	} else {
 		t.Errorf("TestCreate-2: missing rev")
 	}
-	ent_map, err = database.Read(dbInt, entity, (*doc2)["id"].(string)) // FIX id)
+	ent_map, err = database.DbwRead(entity, (*doc2)["id"].(string)) // FIX id)
 	if err != nil {
 		t.Error(`db read error`, err)
 	}
@@ -153,26 +155,26 @@ func TestCreate(t *testing.T) {
 	updEntity = *ent_map // .(*map[string]interface{})
 	updEntity["shape"] = "pyramid"
 	//rev, err = Update(dbInt.GetDbi(), entity, id, rev, updEntity)
-	err = dbInt.DbwUpdate(entity, "pyramid", ent_map)
+	err = database.DbwUpdate(entity, "pyramid", ent_map)
 	if err != nil {
 		t.Error(`db update error`, err)
 	}
 	t.Logf("update entity=%s id=%s new-rev=%s\n", entity, id, rev)
 
-	ent_map, err = database.Read(dbInt, entity, id)
+	ent_map, err = database.DbwRead(entity, id)
 	if err != nil {
 		t.Error(`db read error`, err)
 	}
 	t.Logf("read entity=%s id=%s val=%v\n", entity, id, ent_map)
 
 	//err = Delete(dbInt.GetDbi(), entity, id, rev)
-	err = dbInt.DbwDelete(entity, ent_map)
+	err = database.DbwDelete(entity, ent_map)
 	if err != nil {
 		t.Error(`db delete error`, err)
 	}
 	// try again - should get error
 	//err = Delete(dbInt.GetDbi(), entity, id, rev)
-	err = dbInt.DbwDelete(entity, ent_map)
+	err = database.DbwDelete(entity, ent_map)
 	if err != nil {
 		t.Logf("repeat db delete: get error=%v\n", err)
 	} else {

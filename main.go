@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -157,15 +159,19 @@ func frontpage(w http.ResponseWriter, r *http.Request) {
 
 func initDB(cfg *config.PinoyConfig) error {
 	// which db implemnentation are we using?
-	db1 := new(database.CDBInterface)
-	var pDb database.DBInterface = db1
-	database.SetDB(&pDb)
-	// FIX err := database.Init(&pDb, cfg)
-	err := database.DbwInit(cfg)
-	if err != nil {
-		log.Println("main:ERROR: db init error=", err)
-		//log.Fatal("Failed to create db: ", err)
-		return err
+	if strings.Compare("", cfg.DbType) == 0 || strings.Compare("couchdb", cfg.DbType) == 0 {
+		db1 := new(database.CDBInterface)
+		var pDb database.DBInterface = db1
+		database.SetDB(&pDb)
+		err := database.DbwInit(cfg)
+		if err != nil {
+			log.Println("main:ERROR: db init error: couchdb error=", err)
+			//log.Fatal("Failed to create db: ", err)
+			return err
+		}
+	} else if strings.Compare("mongodb", cfg.DbType) == 0 {
+		log.Println("main:ERROR: db init error: mongodb not yet supported")
+		return errors.New("mongodb not yet supported")
 	}
 
 	log.Println("pinoy:main: db init success")

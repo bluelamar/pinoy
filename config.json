@@ -1,4 +1,5 @@
 {
+	"DbType": "couchdb",
 	"DbUrl":  "http://localhost",
 	"DbName": "",
 	"DbPort": 5984,

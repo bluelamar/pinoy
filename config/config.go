@@ -7,6 +7,7 @@ import (
 )
 
 type PinoyConfig struct {
+	DbType                    string // supported type, currently either "couchdb" or "mongodb"
 	DbUrl                     string
 	DbName                    string
 	DbPort                    int

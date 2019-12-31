@@ -137,27 +137,27 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 		}
 
 		expHours := 0
-		if num, exists := vm["ExpectedHours"]; exists {
-			expHours = int(num.(float64))
+		if _, exists := vm["ExpectedHours"]; exists {
+			expHours = misc.XtractIntField("ExpectedHours", &vm)
 		}
 
 		totExpHours := float64(0)
-		if num, exists := vm["TotalExpectedHours"]; exists {
-			totExpHours = num.(float64)
+		if _, exists := vm["TotalExpectedHours"]; exists {
+			totExpHours = misc.XtractFloatField("TotalExpectedHours", &vm)
 		}
 
 		totHours := float64(0)
-		if num, exists := vm["TotalHours"]; exists {
-			totHours = num.(float64)
+		if _, exists := vm["TotalHours"]; exists {
+			totHours = misc.XtractFloatField("TotalHours", &vm)
 		}
 
 		ciCnt := int(0)
-		if num, exists := vm["ClockInCnt"]; exists {
-			ciCnt = int(num.(float64))
+		if _, exists := vm["ClockInCnt"]; exists {
+			ciCnt = misc.XtractIntField("ClockInCnt", &vm)
 		}
 		coCnt := int(0)
-		if num, exists := vm["ClockOutCnt"]; exists {
-			coCnt = int(num.(float64))
+		if _, exists := vm["ClockOutCnt"]; exists {
+			coCnt = misc.XtractIntField("ClockOutCnt", &vm)
 		}
 
 		emp := EmpHours{

@@ -21,6 +21,9 @@
   <tr><td>Bed Size</td><td>
   <input required placeholder="Bed Size" id="bed_size" spellcheck="false" class="is-sensitive" value="{{.Room.BedSize}}" name="bed_size" />
   </td></tr>
+  <tr><td>Room Sleeps Number of People</td><td>
+  <input required placeholder="Sleeps Number of People" id="num_sleeps" type="number" min="1" max="10" value="{{.Room.NumSleeps}}" name="num_sleeps" />
+  </td></tr>
   <tr><td>Room Rate</td><td>
   {{$rateClass := .Room.RateClass}}
   <select value="{{.Room.RateClass}}" id="room_rate" name="room_rate" >
@@ -32,6 +35,9 @@
     {{end}}
   {{end}}
   </select>
+  </td></tr>
+  <tr><td>Extra Rate per Person</td><td>
+  <input required placeholder="Extra Rate per Person" id="extra_rate" name="extra_rate" value="{{.Room.ExtraRate}}">
   </td></tr>
   </table>
   <input type="submit" name="commit" value="Submit" />

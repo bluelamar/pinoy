@@ -6,7 +6,7 @@ DBUSERNAME=$1
 DBPASSWD=$2
 
 # get a session cookie
-curl -c cdbcookies -H "Accept: application/json" -H "Content-Type: application/x-www-form-urlencoded"  http://localhost:5984/_session -X POST -d "name=$DBUSERNAME&password=$DBPASSWD"
+curl -v -c cdbcookies -H "Accept: application/json" -H "Content-Type: application/x-www-form-urlencoded"  http://localhost:5984/_session -X POST -d "name=$DBUSERNAME&password=$DBPASSWD"
 
 # run in single node mode
 # http://docs.couchdb.org/en/stable/setup/single-node.html
@@ -14,23 +14,24 @@ curl -v --cookie "cdbcookies" http://localhost:5984/_users -X PUT
 curl -v --cookie "cdbcookies" http://localhost:5984/_replicator -X PUT
 # IGNORE this one: curl -v --cookie "cdbcookies" http://localhost:5984/_global_changes -X PUT
 
+exit 0
+
 # create the db's
 curl -v --cookie "cdbcookies" http://localhost:5984/rooms -X PUT
 curl -v --cookie "cdbcookies" http://localhost:5984/room_status -X PUT
 curl -v --cookie "cdbcookies" http://localhost:5984/room_rates -X PUT
-curl -v --cookie "cdbcookies" http://localhost:5984/staff -X PUT
-curl -v --cookie "cdbcookies" http://localhost:5984/food -X PUT
-curl -v --cookie "cdbcookies" http://localhost:5984/food_rates -X PUT
-curl -v --cookie "cdbcookies" http://localhost:5984/testxyz -X PUT
-curl -v --cookie "cdbcookies" http://localhost:5984/room_usage -X PUT
-curl -v --cookie "cdbcookies" http://localhost:5984/bellhops -X PUT
-#curl -v --cookie "cdbcookies" http://localhost:5984/hop_shift -X PUT
-curl -v --cookie "cdbcookies" http://localhost:5984/staff_hours -X PUT
-curl -v --cookie "cdbcookies" http://localhost:5984/staff_hours_bkup_b -X PUT
-curl -v --cookie "cdbcookies" http://localhost:5984/staff_hours_bkup_c -X PUT
 curl -v --cookie "cdbcookies" http://localhost:5984/room_usage -X PUT
 curl -v --cookie "cdbcookies" http://localhost:5984/room_usage_bkup_b -X PUT
 curl -v --cookie "cdbcookies" http://localhost:5984/room_usage_bkup_c -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/food -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/food_rates -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/bellhops -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/staff -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/staff_hours -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/staff_hours_bkup_b -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/staff_hours_bkup_c -X PUT
+curl -v --cookie "cdbcookies" http://localhost:5984/testxyz -X PUT
+#curl -v --cookie "cdbcookies" http://localhost:5984/hop_shift -X PUT
 
 INDEX='{"index":{"fields":[{"UserID":"desc"}]}}'
 curl -v -H "Content-Type: application/json" --cookie "cdbcookies" http://localhost:5984/staff_hours/_index -X POST -d $INDEX

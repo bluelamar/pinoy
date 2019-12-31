@@ -12,7 +12,7 @@
 
 <table>
 <tr>
-<th>Room Number</th><th>Number Beds</th><th>Bed Size</th><th>Rate Class</th><th>Update</th><th>Delete</th>
+<th>Room Number</th><th>Number Beds</th><th>Bed Size</th><th>Rate Class</th><th>Number People Sleeps</th><th>Extra Rate per person</th><th>Update</th><th>Delete</th>
 </tr>
 {{range .Rooms}}
 
@@ -21,6 +21,8 @@
 <td>{{.NumBeds}}</td>
 <td>{{.BedSize}}</td>
 <td>{{.RateClass}}</td>
+<td>{{.NumSleeps}}</td>
+<td>{{.ExtraRate}}</td>
 
 <td><a id="upd_room" class="button" href="/manager/upd_room?room_num={{.RoomNum}}&update=true">Update Room</a></td>
 <td><a id="del_room" class="button" href="/manager/upd_room?room_num={{.RoomNum}}&update=delete">Delete Room</a></td>

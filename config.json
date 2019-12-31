@@ -1,8 +1,8 @@
 {
-	"DbType": "couchdb",
-	"DbUrl":  "http://localhost",
-	"DbName": "",
-	"DbPort": 5984,
+	"DbType": "mongodb",
+	"DbUrl":  "localhost",
+	"DbName": "pinoy",
+	"DbPort": 27017,
 	"DbUser": "yourDBuser",
 	"DbPwd":  "yourDBuserPassword",
 	"DbCommTimeout": 5,

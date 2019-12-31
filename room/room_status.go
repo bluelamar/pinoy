@@ -47,14 +47,18 @@ type RoomUsageTable struct {
 }
 
 type RoomState struct {
-	RoomNum      string
-	Status       string
-	GuestInfo    string
-	NumGuests    int
-	Duration     string
-	CheckinTime  string
-	CheckoutTime string
-	Rate         string
+	RoomNum        string
+	Status         string
+	GuestInfo      string
+	NumGuests      int
+	Duration       string
+	CheckinTime    string
+	CheckoutTime   string
+	Rate           string
+	NumExtraGuests int
+	ExtraRate      string
+	Purchases      string // append food purchases here
+	PurchaseTotal  string // how many pesos spent
 }
 
 type RoomStateTable struct {
@@ -109,15 +113,32 @@ func xlateToRoomStatus(val map[string]interface{}) *RoomState {
 	if str, exists := val["Rate"]; exists {
 		rt = str.(string)
 	}
+	neg := misc.XtractIntField("NumExtraGuests", &val)
+	er := ""
+	if str, exists := val["ExtraRate"]; exists {
+		er = str.(string)
+	}
+	pur := ""
+	if str, exists := val["Purchase"]; exists {
+		pur = str.(string)
+	}
+	pt := ""
+	if str, exists := val["PurchaseTotal"]; exists {
+		pt = str.(string)
+	}
 	rs := RoomState{
-		RoomNum:      rn,
-		Status:       st,
-		GuestInfo:    gi,
-		NumGuests:    numg,
-		Duration:     dur,
-		CheckinTime:  ci,
-		CheckoutTime: co,
-		Rate:         rt,
+		RoomNum:        rn,
+		Status:         st,
+		GuestInfo:      gi,
+		NumGuests:      numg,
+		Duration:       dur,
+		CheckinTime:    ci,
+		CheckoutTime:   co,
+		Rate:           rt,
+		NumExtraGuests: neg,
+		ExtraRate:      er,
+		Purchases:      pur,
+		PurchaseTotal:  pt,
 	}
 	return &rs
 }
@@ -359,9 +380,13 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	(*rs)["Status"] = OpenStatus
 	(*rs)["GuestInfo"] = ""
 	(*rs)["NumGuests"] = int(0)
+	(*rs)["NumExtraGuests"] = int(0)
+	(*rs)["ExtraRate"] = ""
 	(*rs)["Duration"] = ""
 	(*rs)["CheckinTime"] = ""
 	(*rs)["CheckoutTime"] = ""
+	(*rs)["Purchase"] = ""
+	(*rs)["PurchaseTotal"] = ""
 	err = database.DbwUpdate(RoomStatusEntity, "", rs)
 	if err != nil {
 		log.Println("checkout:ERROR: Failed to update room status for room=", room, " : err=", err)
@@ -501,6 +526,9 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		duration := r.Form["duration"]
 		roomNum := r.Form["room_num"]
 		numGuests := r.Form["num_guests"]
+		family := r.Form["family"]
+		//purchases := r.Form["purchases"]
+		//purchaseTotal := r.Form["purchase_total"]
 
 		// set in db
 		// read room status record and reset as booked with customers name
@@ -519,12 +547,36 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		num, _ := strconv.Atoi(numGuests[0])
 		(*rs)["NumGuests"] = num
 
+		// calc guest overage
+		numExtraGuests := int(0)
+		extraRate := ""
+		if family[0] == "no" {
+			// get the roomSleepsNum for the room
+			roomSleepsNum := num
+			rMap, err := database.DbwRead(RoomsEntity, roomNum[0])
+			if err == nil {
+				nsleeps := misc.XtractIntField("NumSleeps", rMap)
+				roomSleepsNum = nsleeps
+				extraRate, _ = (*rMap)["ExtraRate"].(string)
+				(*rs)["ExtraRate"] = extraRate
+				fmt.Println("FIX register: read room=", rMap)
+			}
+			numExtraGuests = num - roomSleepsNum
+			if numExtraGuests < 0 {
+				numExtraGuests = 0
+			}
+		}
+		(*rs)["NumExtraGuests"] = numExtraGuests
+
 		(*rs)["Duration"] = duration[0]
 
 		nowStr, nowTime := misc.TimeNow()
 		(*rs)["CheckinTime"] = nowStr
 		checkOutTime, err := CalcCheckoutTime(nowTime, duration[0])
 		(*rs)["CheckoutTime"] = checkOutTime
+
+		//(*rs)["Purchases"] = purchases[0]
+		//(*rs)["PurchaseTotal"] = purchaseTotal[0]
 
 		// put status record back into db
 		// TODO record for the customer ?
@@ -537,14 +589,16 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		}
 
 		roomState := RoomState{
-			RoomNum:      roomNum[0],
-			Status:       BookedStatus,
-			GuestInfo:    guestInfo,
-			NumGuests:    num,
-			Duration:     duration[0],
-			CheckinTime:  nowStr,
-			CheckoutTime: checkOutTime,
-			Rate:         (*rs)["Rate"].(string),
+			RoomNum:       roomNum[0],
+			Status:        BookedStatus,
+			GuestInfo:     guestInfo,
+			NumGuests:     num,
+			Duration:      duration[0],
+			CheckinTime:   nowStr,
+			CheckoutTime:  checkOutTime,
+			Rate:          (*rs)["Rate"].(string),
+			Purchases:     "", // (*rs)["Purchases"].(string),
+			PurchaseTotal: "", // (*rs)["PurchaseTotal"].(string),
 		}
 		updateRoomStatus(roomNum[0], roomState)
 

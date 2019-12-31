@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -170,8 +169,15 @@ func initDB(cfg *config.PinoyConfig) error {
 			return err
 		}
 	} else if strings.Compare("mongodb", cfg.DbType) == 0 {
-		log.Println("main:ERROR: db init error: mongodb not yet supported")
-		return errors.New("mongodb not yet supported")
+		db1 := new(database.MDBInterface)
+		var pDb database.DBInterface = db1
+		database.SetDB(&pDb)
+		err := database.DbwInit(cfg)
+		if err != nil {
+			log.Println("main:ERROR: db init error: mongodb error=", err)
+			//log.Fatal("Failed to create db: ", err)
+			return err
+		}
 	}
 
 	log.Println("pinoy:main: db init success")
@@ -324,6 +330,8 @@ func main() {
 	http.HandleFunc("/manager/report_room_usage", room.ReportRoomUsage)
 	http.HandleFunc("/manager/backup_room_usage", room.BackupRoomUsage)
 	http.HandleFunc("/manager/upd_food", food.UpdFood)
+	// FIX http.HandleFunc("/manager/report_food_usage", room.ReportRoomUsage)
+	// FIX http.HandleFunc("/manager/backup_food_usage", room.BackupRoomUsage)
 	http.HandleFunc("/manager/svc_stats", misc.SvcStats)
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("static/css"))))
 	err = http.ListenAndServe("127.0.0.1:8080", context.ClearHandler(http.DefaultServeMux)) // setting listening port

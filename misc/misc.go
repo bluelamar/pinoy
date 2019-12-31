@@ -3,6 +3,7 @@ package misc
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -50,8 +51,15 @@ func InitTime(timeZoneName string, hoursEastOfUTC time.Duration) {
 
 func XtractIntField(fieldName string, vmap *map[string]interface{}) int {
 	num := int(0)
+	if istr, ok := (*vmap)[fieldName].(string); ok {
+		if inum, err := strconv.Atoi(istr); err == nil {
+			return inum
+		}
+	}
 	if ival, ok := (*vmap)[fieldName].(int); ok {
 		num = ival
+	} else if ival, ok := (*vmap)[fieldName].(int32); ok {
+		num = int(ival)
 	} else if fval, ok := (*vmap)[fieldName].(float64); ok {
 		num = int(fval)
 	}

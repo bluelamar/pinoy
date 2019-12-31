@@ -283,13 +283,13 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 		}
 
-		// FIX http.Redirect(w, r, "/desk/food", http.StatusFound)
 		return
 	}
 
 	if r.Method != "POST" {
-		log.Println("upd_food: bad http method: should only be a POST")
-		http.Error(w, "Bad request", http.StatusBadRequest) // FIX
+		log.Println("upd_food:ERROR: bad http method: should only be a POST")
+		sessDetails.Sess.Message = `Bad request to Update Food Item`
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
 		return
 	}
 
@@ -415,7 +415,10 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 		id := r.Form["id"]
 		roomNum := r.Form["room_num"]
 
-		// TODO set in db
+		// TODO read the food_usage record and update it - then write it back to the db
+		// what to do with the room_num? oh, update its 
+
+		// TODO set in db - update food_usage for the item
 		fmt.Printf("purchase:FIX item=%s size=%s quantity=%s room-num=%s id=%s\n", item, size, quantity, roomNum, id)
 
 		fmt.Printf("purchase:FIX post about to redirect to room_status\n")

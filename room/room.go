@@ -20,6 +20,8 @@ type RoomDetails struct {
 	NumBeds   int
 	BedSize   string
 	RateClass string
+	NumSleeps int    // nunmber people room intended for, ex: 3 - if more than that the extra rate is applied
+	ExtraRate string // per extra person - ex: "$5"
 }
 
 type RoomDetailDataTable struct {
@@ -65,18 +67,21 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 	rrds := make([]RoomDetails, len(rrs))
 	for k, v := range rrs {
 		val := v.(map[string]interface{})
-		nbs, err := strconv.Atoi(val["NumBeds"].(string))
-		if err != nil {
+		nbs := misc.XtractIntField("NumBeds", &val)
+		/* if err != nil {
 			log.Println("rooms:ERROR: Failed to convert num rooms: err=", err)
 			sessDetails.Sess.Message = `Failed to convert number of rooms`
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
-		}
+		} */
+		nsleeps := misc.XtractIntField("NumSleeps", &val)
 		rrd := RoomDetails{
 			RoomNum:   val["RoomNum"].(string),
 			NumBeds:   nbs,
 			BedSize:   val["BedSize"].(string),
 			RateClass: val["RateClass"].(string),
+			NumSleeps: nsleeps,
+			ExtraRate: val["ExtraRate"].(string),
 		}
 		rrds[k] = rrd
 	}
@@ -173,11 +178,20 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 				return
 			}
+			nsleeps, err := strconv.Atoi((*rMap)["NumSleeps"].(string))
+			if err != nil {
+				log.Println("rooms:ERROR: Failed to convert num sleeps: err=", err)
+				sessDetails.Sess.Message = `Failed to convert typical number of persons the room sleeps`
+				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+				return
+			}
 			roomData = RoomDetails{
 				RoomNum:   (*rMap)["RoomNum"].(string),
 				NumBeds:   nbs,
 				BedSize:   (*rMap)["BedSize"].(string),
 				RateClass: (*rMap)["RateClass"].(string),
+				NumSleeps: nsleeps,
+				ExtraRate: (*rMap)["ExtraRate"].(string),
 			}
 		}
 
@@ -220,9 +234,11 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		roomNum := r.Form["room_num"]
 		bedSize := r.Form["bed_size"]
 		roomRate := r.Form["room_rate"]
+		numSleeps := r.Form["num_sleeps"]
+		extraRate := r.Form["extra_rate"]
 
 		// validate incoming form fields
-		if len(numBeds[0]) == 0 || len(roomNum[0]) == 0 || len(bedSize[0]) == 0 || len(roomRate[0]) == 0 {
+		if len(numBeds[0]) == 0 || len(roomNum[0]) == 0 || len(bedSize[0]) == 0 || len(roomRate[0]) == 0 || len(numSleeps[0]) == 0 || len(extraRate[0]) == 0 {
 			log.Println("upd_room:POST: Missing form data")
 			sessDetails.Sess.Message = `Missing required fields in Update Room Rates`
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
@@ -235,7 +251,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		var err error
 		rMap, err = database.DbwRead(RoomsEntity, roomNum[0])
 		if err != nil {
-			log.Println("upd_room:POST: room num=", roomNum[0], " :err=", err)
+			log.Println("upd_room:POST: must be new room: num=", roomNum[0], " : err=", err)
 
 			// no such entry so the room must be new
 			rm := make(map[string]interface{})
@@ -244,12 +260,16 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 			(*rMap)["NumBeds"] = numBeds[0]
 			(*rMap)["RateClass"] = roomRate[0]
 			(*rMap)["BedSize"] = bedSize[0]
+			(*rMap)["NumSleeps"] = numSleeps[0]
+			(*rMap)["ExtraRate"] = extraRate[0]
 			update = false
 			key = roomNum[0]
 		} else {
 			(*rMap)["NumBeds"] = numBeds[0]
 			(*rMap)["RateClass"] = roomRate[0]
 			(*rMap)["BedSize"] = bedSize[0]
+			(*rMap)["NumSleeps"] = numSleeps[0]
+			(*rMap)["ExtraRate"] = extraRate[0]
 		}
 
 		err = database.DbwUpdate(RoomsEntity, key, rMap)

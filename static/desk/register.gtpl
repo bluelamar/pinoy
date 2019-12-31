@@ -20,12 +20,18 @@
     <tr><td>Number of Guests</td><td>
     <input required placeholder="Number of Guests" id="num_guests" type="number" min="1" max="5" value="1" name="num_guests" />
     </td></tr>
+    <tr><td>Family?</td><td>
+      <select id="family" name="family" >
+        <option value="yes">yes</option>
+        <option value="no">no</option>
+      </select>
+    </td></tr>
     <tr><td>Duration</td><td>
-    <select id="duration" name="duration" >
-    {{range $element := .DurationOptions}}
-      <option value="{{$element}}">{{$element}}</option>
-    {{end}}
-    </select>
+      <select id="duration" name="duration" >
+      {{range $element := .DurationOptions}}
+        <option value="{{$element}}">{{$element}}</option>
+      {{end}}
+      </select>
     </td></tr>
     <tr><td>Room Number</td><td>
     <input readonly placeholder="Room Number" id="room_num" name="room_num" value="{{.RoomNum}}">

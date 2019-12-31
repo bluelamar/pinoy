@@ -71,6 +71,7 @@ func RoomRates(w http.ResponseWriter, r *http.Request) {
 		val := v.(map[string]interface{})
 		rs := val["Rates"].([]interface{})
 		rates := make([]RoomRate, len(rs))
+
 		for k2, v2 := range rs {
 			val2 := v2.(map[string]interface{})
 			rr := RoomRate{

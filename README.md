@@ -73,4 +73,16 @@ test -x /usr/sbin/logrotate || exit 0
 /usr/sbin/logrotate /etc/logrotate.conf
 ```
 
+## Development Environment:
+
+Build the database:
+```
+./scripts/bld_cdb.sh
+```
+
+Run the couchdb:
+```
+./scripts/run_cdb.sh
+```
+
 

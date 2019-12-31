@@ -559,7 +559,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 				roomSleepsNum = nsleeps
 				extraRate, _ = (*rMap)["ExtraRate"].(string)
 				(*rs)["ExtraRate"] = extraRate
-				fmt.Println("FIX register: read room=", rMap)
 			}
 			numExtraGuests = num - roomSleepsNum
 			if numExtraGuests < 0 {

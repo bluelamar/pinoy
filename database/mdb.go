@@ -164,7 +164,7 @@ func (pDbInt *MDBInterface) Find(entity, field, value string) ([]interface{}, er
 	if field == "" {
 		cursor, err = coll.Find(ctx, bson.M{})
 	} else {
-		cursor, err = coll.Find(ctx, bson.D{{field, bson.D{{"$eq", bson.A{value}}}}})
+		cursor, err = coll.Find(ctx, bson.D{{field, value}})
 	}
 	if err != nil {
 		return nil, normalizeError(err)

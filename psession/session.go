@@ -102,15 +102,14 @@ func SessAttrs(r *http.Request) *PinoySession {
 		//http.Error(w, "Forbidden", http.StatusForbidden)
 		session.Values["authenticated"] = false
 	}
-	//fmt.Printf("SessAttrs:FIX: auth=%t\n", session.Values["authenticated"].(bool))
 
 	user := ""
-	if sess_user, ok := session.Values["user"].(string); ok {
-		user = sess_user
+	if sessUser, ok := session.Values["user"].(string); ok {
+		user = sessUser
 	}
 	role := ""
-	if sess_role, ok := session.Values["role"].(string); ok {
-		role = sess_role
+	if sessRole, ok := session.Values["role"].(string); ok {
+		role = sessRole
 	}
 	sess := &PinoySession{
 		Auth:      session.Values["authenticated"].(bool),

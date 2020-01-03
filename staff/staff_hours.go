@@ -187,109 +187,6 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func getEmpFromMap(empMap map[string]interface{}) *map[string]interface{} {
-
-	id := ""
-	name, exists := empMap["UserID"]
-	if !exists {
-		return nil
-	}
-	id = name.(string)
-	if id == "" {
-		// ignore this record
-		return nil
-	}
-
-	clockin := ""
-	if name, exists = empMap["LastClockinTime"]; exists {
-		clockin = name.(string)
-	}
-
-	clockout := ""
-	if name, exists = empMap["LastClockoutTime"]; exists {
-		clockout = name.(string)
-	}
-
-	expHours := 0
-	if num, exists := empMap["ExpectedHours"]; exists {
-		expHours = int(num.(float64))
-	}
-
-	totExpHours := float64(0)
-	if num, exists := empMap["TotalExpectedHours"]; exists {
-		totExpHours = num.(float64)
-	}
-
-	totHours := float64(0)
-	if num, exists := empMap["TotalHours"]; exists {
-		totHours = num.(float64)
-	}
-
-	ciCnt := int(0)
-	if num, exists := empMap["ClockInCnt"]; exists {
-		ciCnt = int(num.(float64))
-	}
-	coCnt := int(0)
-	if num, exists := empMap["ClockOutCnt"]; exists {
-		coCnt = int(num.(float64))
-	}
-
-	emp := map[string]interface{}{
-		//emp := EmpHours{
-		"UserID":             id,
-		"LastClockinTime":    clockin,
-		"LastClockoutTime":   clockout,
-		"ExpectedHours":      expHours,
-		"TotalExpectedHours": totExpHours,
-		"TotalHours":         totHours,
-		"ClockInCnt":         ciCnt,
-		"ClockOutCnt":        coCnt,
-	}
-	return &emp
-}
-
-func cleanupHours(dbName string) error {
-	// remove all entities from specified db
-	resArray, err := database.DbwReadAll(dbName)
-	if err != nil {
-		log.Println(`cleanupHours:ERROR: db readall: err=`, err)
-		return err
-	}
-
-	for _, v := range resArray {
-		vm := v.(map[string]interface{})
-		emp := getEmpFromMap(vm)
-		if emp == nil {
-			continue
-		}
-		if err := database.DbwDelete(dbName, emp); err != nil {
-			log.Println(`cleanupHours:ERROR: db delete: err=`, err)
-		}
-	}
-	return nil
-}
-func copyHours(fromDB, toDB string) error {
-	// copy each entity from fromDB to the toDB
-	resArray, err := database.DbwReadAll(fromDB)
-	if err != nil {
-		log.Println(`copyHours:ERROR: db readall: err=`, err)
-		return err
-	}
-	for _, v := range resArray {
-		vm := v.(map[string]interface{})
-		emp := getEmpFromMap(vm)
-		if emp == nil {
-			continue
-		}
-		err = database.DbwUpdate(toDB, (*emp)["UserID"].(string), emp)
-		if err != nil {
-			log.Println("copyHours:ERROR: Failed to update db for staff hours for userid=", (*emp)["UserID"].(string), " : err=", err)
-			return err
-		}
-	}
-
-	return nil
-}
 func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 	// check session expiration and authorization
@@ -301,11 +198,11 @@ func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 	}
 
 	toDB := ComposeDbName(StaffHoursEntity, "c")
-	if err := cleanupHours(toDB); err != nil {
+	if err := misc.CleanupDbUsage(toDB, "UserID"); err != nil {
 		log.Println("BackupStaffHours:ERROR: Failed to cleanup db=", toDB, " : err=", err)
 	}
 	fromDB := ComposeDbName(StaffHoursEntity, "b")
-	if err := copyHours(fromDB, toDB); err != nil {
+	if err := misc.CopyDbUsage(fromDB, toDB, "UserID"); err != nil {
 		log.Println("BackupStaffHours:ERROR: Failed to copy hours from db=", fromDB, " to=", toDB, " : err=", err)
 	}
 
@@ -318,10 +215,10 @@ func BackupStaffHours(w http.ResponseWriter, r *http.Request) {
 	}
 
 	toDB = fromDB
-	if err := cleanupHours(toDB); err != nil {
+	if err := misc.CleanupDbUsage(toDB, "UserID"); err != nil {
 		log.Println("BackupStaffHours:ERROR: Failed to cleanup db=", toDB, " : err=", err)
 	}
-	if err := copyHours(StaffHoursEntity, toDB); err != nil {
+	if err := misc.CopyDbUsage(StaffHoursEntity, toDB, "UserID"); err != nil {
 		log.Println("BackupStaffHours:ERROR: Failed to copy hours from db=", StaffHoursEntity, " to=", toDB, " : err=", err)
 	}
 	bkupTime, err = database.DbwRead(StaffHoursEntity, "BackupTime")

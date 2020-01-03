@@ -12,5 +12,6 @@
 	"CookieSecretDbEntity": "",
 	"StatsMonitorInterval": 60,
 	"RoomStatusMonitorInterval": 2,
-	"CheckoutGracePeriod": 15
+	"CheckoutGracePeriod": 15,
+	"MonetarySymbol":"₱"
 }

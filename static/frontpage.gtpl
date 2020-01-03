@@ -37,11 +37,13 @@ roomStateTimer();
       <li><a href="/desk/food" class="pinoylink">Order Food and Drink</a></li>
       <li><a href="/desk/report_staff_hours" class="pinoylink">Clock-in/Clock-out Staff</a></li>
       {{if eq .Sess.Role "Manager"}}
-      <p>Managerial Actions</p>
-      <li><a href="/manager/report_room_usage" class="pinoylink">Room Usage Reports</a></li>
-      <li><a href="/manager/staff" class="pinoylink">Add or Update Staff</a></li>
+      <p><b>Managerial Actions</b></p>
+      <li><a href="/manager/report_room_usage" class="pinoylink">Room Usage Report</a></li>
       <li><a href="/manager/room_rates" class="pinoylink">Add or Update Room Rates</a></li>
       <li><a href="/manager/rooms" class="pinoylink">Add or Update Rooms</a></li>
+      <li><a href="/desk/report_staff_hours" class="pinoylink">Staff Report</a></li>
+      <li><a href="/manager/staff" class="pinoylink">Add or Update Staff</a></li>
+      <li><a href="/manager/report_food_usage" class="pinoylink">Food Usage Report</a></li>
       <li><a href="/manager/upd_food" class="pinoylink">Add or Update Food Items</a></li>
       <li><a href="/manager/svc_stats" class="pinoylink">Server Statistics</a></li>
       {{end}}

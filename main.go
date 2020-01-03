@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -50,6 +51,8 @@ func signout(w http.ResponseWriter, r *http.Request) {
 	sess.Values["authenticated"] = false
 	sess.Values["user"] = nil
 	sess.Values["role"] = nil
+	sess.Values[food.SessFItems] = nil
+	sess.Values[food.SessTCost] = nil
 
 	err = sess.Save(r, w)
 	if err != nil {
@@ -90,7 +93,6 @@ func signin(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// user signing in
 		r.ParseForm()
-
 		username := r.Form["user_id"]
 		password := r.Form["user_password"]
 
@@ -123,9 +125,11 @@ func signin(w http.ResponseWriter, r *http.Request) {
 
 		sess, err := psession.GetUserSession(w, r)
 		if err != nil {
+			log.Println("signin: Failed to get user session: err=", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
 		sess.Values["authenticated"] = true
 		sess.Values["user"] = username[0]
 		sess.Values["role"] = role // "Manager" "desk" "staff"
@@ -230,6 +234,7 @@ func main() {
 		log.Println("main:ERROR: config load error=", err)
 		return
 	}
+	config.SetConfig(cfg)
 
 	switch cfg.LogOutput {
 	case "stdout":
@@ -256,6 +261,11 @@ func main() {
 	}
 	log.SetOutput(logger)
 
+	{
+		// setup serialization for types stored in sessions
+		var items []food.FoodItem
+		gob.Register(items)
+	}
 	psession.InitStore(cfg)
 
 	misc.InitTime("Singapore", 8)
@@ -319,6 +329,7 @@ func main() {
 	http.HandleFunc("/desk/upd_staff_hours", staff.UpdateStaffHours)
 	http.HandleFunc("/desk/food", food.Food)
 	http.HandleFunc("/desk/purchase", food.Purchase)
+	http.HandleFunc("/desk/purchase_summary", food.PurchaseSummary)
 	http.HandleFunc("/manager/staff", staff.Staff)
 	http.HandleFunc("/manager/upd_staff", staff.UpdStaff)
 	http.HandleFunc("/manager/add_staff", staff.AddStaff)
@@ -330,8 +341,8 @@ func main() {
 	http.HandleFunc("/manager/report_room_usage", room.ReportRoomUsage)
 	http.HandleFunc("/manager/backup_room_usage", room.BackupRoomUsage)
 	http.HandleFunc("/manager/upd_food", food.UpdFood)
-	// FIX http.HandleFunc("/manager/report_food_usage", room.ReportRoomUsage)
-	// FIX http.HandleFunc("/manager/backup_food_usage", room.BackupRoomUsage)
+	http.HandleFunc("/manager/report_food_usage", food.ReportFoodUsage)
+	http.HandleFunc("/manager/backup_food_usage", food.BackupFoodUsage)
 	http.HandleFunc("/manager/svc_stats", misc.SvcStats)
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("static/css"))))
 	err = http.ListenAndServe("127.0.0.1:8080", context.ClearHandler(http.DefaultServeMux)) // setting listening port

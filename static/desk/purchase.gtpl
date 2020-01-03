@@ -13,7 +13,7 @@
     <table>
     <tr>
     <td>Room</td><td>
-    <input required placeholder="Room" label="false" spellcheck="false" class="is-sensitive" value="{{.Room}}" name="room_num" id="room_num" />
+    <input placeholder="Room" label="false" spellcheck="false" class="is-sensitive" value="{{.Room}}" name="room_num" id="room_num" />
     </td>
     </tr>
     <tr>

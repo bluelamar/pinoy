@@ -19,7 +19,7 @@
   <input required placeholder="Price" id="item_price" value="{{.FoodData.Price}}" name="item_price" />
   </td></tr>
   <tr><td>Item Size</td><td>
-  <input required placeholder="Item Size" id="item_size" spellcheck="false" class="is-sensitive" value="{{.FoodData.Quantity}}" name="item_size" />
+  <input required placeholder="Item Size" id="item_size" spellcheck="false" class="is-sensitive" value="{{.FoodData.Size}}" name="item_size" />
   </td></tr>
   </table>
   <input type="submit" name="commit" value="Submit" />

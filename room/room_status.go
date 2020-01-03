@@ -697,62 +697,6 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func filterRoomUsageFromMap(ruMap map[string]interface{}) *map[string]interface{} {
-	id := ""
-	name, exists := ruMap[roomUsageRN]
-	if !exists {
-		return nil
-	}
-	id = name.(string)
-	if id == "" {
-		// ignore this record
-		return nil
-	}
-
-	return &ruMap
-}
-func cleanupUsage(dbName string) error {
-	// remove all entities from specified db
-	resArray, err := database.DbwReadAll(dbName)
-	if err != nil {
-		log.Println(`room.cleanupUsage:ERROR: db readall: err=`, err)
-		return err
-	}
-
-	for _, v := range resArray {
-		vm := v.(map[string]interface{})
-		ru := filterRoomUsageFromMap(vm)
-		if ru == nil {
-			continue
-		}
-		if err := database.DbwDelete(dbName, ru); err != nil {
-			log.Println(`room.cleanupUsage:ERROR: db delete: err=`, err, ` : room-usage=`, ru)
-		}
-	}
-	return nil
-}
-func copyUsage(fromDB, toDB string) error {
-	// copy each entity from fromDB to the toDB
-	resArray, err := database.DbwReadAll(fromDB)
-	if err != nil {
-		log.Println(`room.Usage:ERROR: db readall: err=`, err)
-		return err
-	}
-	for _, v := range resArray {
-		vm := v.(map[string]interface{})
-		ru := filterRoomUsageFromMap(vm)
-		if ru == nil {
-			continue
-		}
-		err = database.DbwUpdate(toDB, (*ru)[roomUsageRN].(string), ru)
-		if err != nil {
-			log.Println("room.copyUsage:ERROR: Failed to update db=", toDB, " : for room-usage=", ru, " : err=", err)
-			return err
-		}
-	}
-
-	return nil
-}
 func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 	// check session expiration and authorization
@@ -764,11 +708,11 @@ func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	toDB := staff.ComposeDbName(roomUsageEntity, "c")
-	if err := cleanupUsage(toDB); err != nil {
+	if err := misc.CleanupDbUsage(toDB, roomUsageRN); err != nil {
 		log.Println("BackupRoomUsage:ERROR: Failed to cleanup db=", toDB, " : err=", err)
 	}
 	fromDB := staff.ComposeDbName(roomUsageEntity, "b")
-	if err := copyUsage(fromDB, toDB); err != nil {
+	if err := misc.CopyDbUsage(fromDB, toDB, roomUsageRN); err != nil {
 		log.Println("BackupRoomUsage:ERROR: Failed to copy usage from db=", fromDB, " to=", toDB, " : err=", err)
 	}
 
@@ -781,10 +725,10 @@ func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	toDB = fromDB
-	if err := cleanupUsage(toDB); err != nil {
+	if err := misc.CleanupDbUsage(toDB, roomUsageRN); err != nil {
 		log.Println("BackupRoomUsage:ERROR: Failed to cleanup db=", toDB, " : err=", err)
 	}
-	if err := copyUsage(roomUsageEntity, toDB); err != nil {
+	if err := misc.CopyDbUsage(roomUsageEntity, toDB, roomUsageRN); err != nil {
 		log.Println("BackupRoomUsage:ERROR: Failed to copy usage from db=", roomUsageEntity, " to=", toDB, " : err=", err)
 	}
 	bkupTime, err = database.DbwRead(roomUsageEntity, "BackupTime")
@@ -799,7 +743,7 @@ func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 	// 0 the TotHours and Guest count
 	resArray, err := database.DbwReadAll(roomUsageEntity)
 	if err != nil {
-		log.Println(`BackupStaffHours:ERROR: db readall: err=`, err)
+		log.Println(`BackupRoomUsage:ERROR: db readall: err=`, err)
 		return
 	}
 
@@ -814,7 +758,7 @@ func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 		(vm)[roomUsageTNG] = int(0)
 		(vm)[roomUsageNTO] = int(0)
 		if err := database.DbwUpdate(roomUsageEntity, "", &vm); err != nil {
-			log.Println(`BackupStaffHours:ERROR: db update: err=`, err)
+			log.Println(`BackupRoomUsage:ERROR: db update: err=`, err)
 		}
 	}
 

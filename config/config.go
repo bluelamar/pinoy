@@ -21,6 +21,16 @@ type PinoyConfig struct {
 	StatsMonitorInterval      int    // minutes, report server stats
 	RoomStatusMonitorInterval int    // minutes, check room status for rooms to be checked out
 	CheckoutGracePeriod       int    // minutes, grace period for customer to checkout
+	MonetarySymbol            string // prefix for money, ex: "$" or "₱"
+}
+
+var pcfg *PinoyConfig
+
+func SetConfig(cfg *PinoyConfig) {
+	pcfg = cfg
+}
+func GetConfig() *PinoyConfig {
+	return pcfg
 }
 
 func LoadConfig(fpath string) (*PinoyConfig, error) {
@@ -70,5 +80,8 @@ func (cfg *PinoyConfig) NormalizeConfig() {
 	}
 	if cfg.CheckoutGracePeriod == 0 { // minutes, grace period for customer to checkout
 		cfg.CheckoutGracePeriod = 15
+	}
+	if cfg.MonetarySymbol == "" {
+		cfg.MonetarySymbol = "₱"
 	}
 }

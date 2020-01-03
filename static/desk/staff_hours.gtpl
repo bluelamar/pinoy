@@ -8,14 +8,15 @@
 <p><h3>{{.Sess.Role}} Page</h3></p>
 
 {{if eq .Sess.Role "Manager"}}
-  <p><a id="backup" class="button" href="/manager/backup_staff_hours">Backup Staff Hours and Reset</a></p>
-
-  <p><a id="backup" class="button" href="/desk/report_staff_hours?bkup=b">Show Previous Backup Staff Hours</a></p>
-
-  <p><a id="backup" class="button" href="/desk/report_staff_hours?bkup=c">Show Oldest Backup Staff Hours</a></p>
 {{if ne .Title "Current Staff Hours"}}
-  <p><a id="backup" class="button" href="/desk/report_staff_hours">Show Current Staff Hours</a></p>
+  <p><a id="backup" class="pinoylink" href="/desk/report_staff_hours">Show Current Staff Hours</a></p>
+{{else}}
+  <p><a id="backup" class="pinoylink" href="/manager/backup_staff_hours">Backup Staff Hours and Reset</a></p>
 {{end}}
+
+  <p><a id="backup" class="pinoylink" href="/desk/report_staff_hours?bkup=b">Show Previous Backup Staff Hours</a></p>
+
+  <p><a id="backup" class="pinoylink" href="/desk/report_staff_hours?bkup=c">Show Oldest Backup Staff Hours</a></p>
 {{end}}
 
 <p><h3>{{.Title}}</h3></p>

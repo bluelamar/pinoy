@@ -5,6 +5,8 @@ import (
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/bluelamar/pinoy/database"
 )
 
 var timeLocale *time.Location
@@ -68,10 +70,77 @@ func XtractIntField(fieldName string, vmap *map[string]interface{}) int {
 
 func XtractFloatField(fieldName string, vmap *map[string]interface{}) float64 {
 	num := float64(0)
+	if fstr, ok := (*vmap)[fieldName].(string); ok {
+		if f, err := strconv.ParseFloat(fstr, 64); err == nil {
+			return f
+		}
+	}
 	if fval, ok := (*vmap)[fieldName].(float64); ok {
 		num = fval
 	} else if ival, ok := (*vmap)[fieldName].(int); ok {
 		num = float64(ival)
 	}
 	return num
+}
+
+// FilterUsageMapByField returns nil for entry that does not contain field
+func FilterUsageMapByField(uMap map[string]interface{}, field string) *map[string]interface{} {
+	id := ""
+	name, exists := uMap[field]
+	if !exists {
+		return nil
+	}
+	id = name.(string)
+	if id == "" {
+		// ignore this record
+		return nil
+	}
+
+	return &uMap
+}
+
+// CleanupDbUsage entries from dbName, only entries containing the field
+func CleanupDbUsage(dbName, field string) error {
+	// remove all entities from specified db
+	resArray, err := database.DbwReadAll(dbName)
+	if err != nil {
+		log.Println(`misc.CleanupUsage:ERROR: db readall: err=`, err)
+		return err
+	}
+
+	for _, v := range resArray {
+		vm := v.(map[string]interface{})
+		ru := FilterUsageMapByField(vm, field)
+		if ru == nil {
+			continue
+		}
+		if err := database.DbwDelete(dbName, ru); err != nil {
+			log.Println(`misc.CleanupUsage:ERROR: db delete: err=`, err, ` : usage=`, ru)
+		}
+	}
+	return nil
+}
+
+// CopyDbUsage entries from fromDB to the toDB, but only entries containing the field
+func CopyDbUsage(fromDB, toDB, field string) error {
+	// copy each entity from fromDB to the toDB
+	resArray, err := database.DbwReadAll(fromDB)
+	if err != nil {
+		log.Println(`misc.CopyDbUsage:ERROR: db readall: err=`, err)
+		return err
+	}
+	for _, v := range resArray {
+		vm := v.(map[string]interface{})
+		ru := FilterUsageMapByField(vm, field)
+		if ru == nil {
+			continue
+		}
+		err = database.DbwUpdate(toDB, (*ru)[field].(string), ru)
+		if err != nil {
+			log.Println("misc.CopyDbUsage:ERROR: Failed to update db=", toDB, " : for usage=", ru, " : err=", err)
+			return err
+		}
+	}
+
+	return nil
 }

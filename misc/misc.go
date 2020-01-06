@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bluelamar/pinoy/database"
@@ -54,8 +55,12 @@ func InitTime(timeZoneName string, hoursEastOfUTC time.Duration) {
 func XtractIntField(fieldName string, vmap *map[string]interface{}) int {
 	num := int(0)
 	if istr, ok := (*vmap)[fieldName].(string); ok {
+		istr = strings.TrimSpace(istr)
 		if inum, err := strconv.Atoi(istr); err == nil {
 			return inum
+		} else {
+			log.Println("xtract-int: Parse err=", err, " : for string=", istr)
+			return num
 		}
 	}
 	if ival, ok := (*vmap)[fieldName].(int); ok {
@@ -71,8 +76,12 @@ func XtractIntField(fieldName string, vmap *map[string]interface{}) int {
 func XtractFloatField(fieldName string, vmap *map[string]interface{}) float64 {
 	num := float64(0)
 	if fstr, ok := (*vmap)[fieldName].(string); ok {
+		fstr = strings.TrimSpace(fstr)
 		if f, err := strconv.ParseFloat(fstr, 64); err == nil {
 			return f
+		} else {
+			log.Println("xtract-float: Parse err=", err, " : for string=", fstr)
+			return num
 		}
 	}
 	if fval, ok := (*vmap)[fieldName].(float64); ok {

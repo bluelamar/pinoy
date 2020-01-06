@@ -112,9 +112,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 
 		update := ""
 		updates, ok := r.URL.Query()["update"]
-		if !ok || len(updates[0]) < 1 {
-			log.Println("upd_room: missing Url param: update")
-		} else {
+		if ok && len(updates[0]) > 0 {
 			update = updates[0]
 		}
 

@@ -5,6 +5,36 @@ Pinoy Lodge Application
 
 **pinoy** will load config from /etc/pinoy/config.json
 
+There is no implementation checked into the repo for the following API:
+```
+func (cfg *PinoyConfig) DecryptDbPwd() (string, error) 
+func (cfg *PinoyConfig) EncryptDbPwd() (string, error) 
+```
+
+This is for security reasons so that implementors may use their own secret implementations.
+A simple implementation could like this:
+```
+    package config
+
+    const key = "my secret"
+
+    func (cfg *PinoyConfig) DecryptDbPwd() (string, error) {
+
+	// decrypt base64 crypto to original value
+	pwd := Decrypt(key, cfg.DbPwd)
+	return pwd, nil
+    }
+
+    func (cfg *PinoyConfig) EncryptDbPwd() (string, error) {
+	// encrypt base64 crypto to original value
+	pwd := Encrypt(key, cfg.DbPwd)
+	cfg.DbPwd = pwd
+
+	return cfg.DbPwd, nil
+    }
+```
+
+
 ### Logging
 
 **LogOutput** takes 1 of these values: file, stderr, stdout

@@ -6,6 +6,7 @@
 	"DbUser": "yourDBuser",
 	"DbPwd":  "yourDBuserPassword",
 	"DbCommTimeout": 5,
+	"DbAuthDb": "",
 	"LogOutput": "file",
 	"LogFile": "/var/log/pinoy/pinoy.log",
 	"CookieSecret": "something-very-secret",

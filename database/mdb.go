@@ -35,7 +35,13 @@ func (pDbInt *MDBInterface) Init(cfg *config.PinoyConfig) error {
 	// using SCRAM auth
 	loginCreds := cfg.DbUser + ":" + pwd + "@"
 	port := strconv.Itoa(cfg.DbPort)
-	url := "mongodb://" + loginCreds + cfg.DbUrl + ":" + port // ex: mongodb://foo:bar@localhost:27017
+	// use the database to auth on ubuntu-18.04 client
+	// url := "mongodb://" + loginCreds + cfg.DbUrl + ":" + port + "/pinoy" // ex: mongodb://foo:bar@localhost:27017/pinoy
+	url := "mongodb://" + loginCreds + cfg.DbUrl + ":" + port // works on mac
+	if len(cfg.DbAuthDb) > 0 {
+		url = url + "/" + cfg.DbAuthDb
+	}
+
 	client, err := mongo.NewClient(options.Client().ApplyURI(url))
 	if err != nil {
 		return normalizeError(err)

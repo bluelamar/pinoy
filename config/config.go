@@ -14,6 +14,7 @@ type PinoyConfig struct {
 	DbUser                    string
 	DbPwd                     string // encrypted - user defined encryption
 	DbCommTimeout             int    // communication timeout in seconds
+	DbAuthDb                  string // "" when running on Mac, set to "pinoy" when running on ubuntu
 	LogOutput                 string // stdout, file
 	LogFile                   string // path name if LogOutput == "file"
 	CookieSecret              string // if set, use this as the cookie secret rather than from the DB

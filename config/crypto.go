@@ -44,7 +44,6 @@ func Encrypt(keyText, clearText string) string {
 
 	//key := []byte(keyText)
 	key := normalizeKey(keyText)
-	log.Println("FIX encrypt key len=", len(key))
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err)

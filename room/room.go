@@ -4,7 +4,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/bluelamar/pinoy/database"
 	"github.com/bluelamar/pinoy/misc"
@@ -68,12 +67,8 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 	for k, v := range rrs {
 		val := v.(map[string]interface{})
 		nbs := misc.XtractIntField("NumBeds", &val)
-		/* if err != nil {
-			log.Println("rooms:ERROR: Failed to convert num rooms: err=", err)
-			sessDetails.Sess.Message = `Failed to convert number of rooms`
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
-			return
-		} */
+		// ensure all fields will get "" if they were nil
+		er, _ := val["ExtraRate"].(string)
 		nsleeps := misc.XtractIntField("NumSleeps", &val)
 		rrd := RoomDetails{
 			RoomNum:   val["RoomNum"].(string),
@@ -81,7 +76,7 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 			BedSize:   val["BedSize"].(string),
 			RateClass: val["RateClass"].(string),
 			NumSleeps: nsleeps,
-			ExtraRate: val["ExtraRate"].(string),
+			ExtraRate: er,
 		}
 		rrds[k] = rrd
 	}
@@ -171,27 +166,16 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 
 		var roomData RoomDetails
 		if rMap != nil {
-			nbs, err := strconv.Atoi((*rMap)["NumBeds"].(string))
-			if err != nil {
-				log.Println("upd_room:ERROR: Failed to convert num beds: err=", err)
-				sessDetails.Sess.Message = "Failed to Update room: " + room
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
-				return
-			}
-			nsleeps, err := strconv.Atoi((*rMap)["NumSleeps"].(string))
-			if err != nil {
-				log.Println("rooms:ERROR: Failed to convert num sleeps: err=", err)
-				sessDetails.Sess.Message = `Failed to convert typical number of persons the room sleeps`
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
-				return
-			}
+			nbs := misc.XtractIntField("NumBeds", rMap)
+			nsleeps := misc.XtractIntField("NumSleeps", rMap)
+			er, _ := (*rMap)["ExtraRate"].(string)
 			roomData = RoomDetails{
 				RoomNum:   (*rMap)["RoomNum"].(string),
 				NumBeds:   nbs,
 				BedSize:   (*rMap)["BedSize"].(string),
 				RateClass: (*rMap)["RateClass"].(string),
 				NumSleeps: nsleeps,
-				ExtraRate: (*rMap)["ExtraRate"].(string),
+				ExtraRate: er,
 			}
 		}
 
@@ -230,12 +214,12 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 	} else {
 		r.ParseForm()
 
-		numBeds := r.Form["num_beds"]
-		roomNum := r.Form["room_num"]
-		bedSize := r.Form["bed_size"]
-		roomRate := r.Form["room_rate"]
-		numSleeps := r.Form["num_sleeps"]
-		extraRate := r.Form["extra_rate"]
+		numBeds, _ := r.Form["num_beds"]
+		roomNum, _ := r.Form["room_num"]
+		bedSize, _ := r.Form["bed_size"]
+		roomRate, _ := r.Form["room_rate"]
+		numSleeps, _ := r.Form["num_sleeps"]
+		extraRate, _ := r.Form["extra_rate"]
 
 		// validate incoming form fields
 		if len(numBeds[0]) == 0 || len(roomNum[0]) == 0 || len(bedSize[0]) == 0 || len(roomRate[0]) == 0 || len(numSleeps[0]) == 0 || len(extraRate[0]) == 0 {

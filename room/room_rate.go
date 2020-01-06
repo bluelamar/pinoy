@@ -203,13 +203,13 @@ func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 	} else {
 		r.ParseForm()
 
-		rateClass := r.Form["rate_class"]
-		newNumUnits := r.Form["num_units"]
-		newTimeUnit := r.Form["new_rate_time_unit"]
-		newCost := r.Form["new_rate_cost"]
+		rateClass, _ := r.Form["rate_class"]
+		newNumUnits, _ := r.Form["num_units"]
+		newTimeUnit, _ := r.Form["new_rate_time_unit"]
+		newCost, _ := r.Form["new_rate_cost"]
 
 		// validate incoming form fields
-		if len(rateClass[0]) == 0 || len(newTimeUnit[0]) == 0 || len(newCost[0]) == 0 {
+		if len(rateClass[0]) == 0 || len(newTimeUnit[0]) == 0 || len(newCost[0]) == 0 || len(newNumUnits[0]) == 0 {
 			log.Println("upd_room_rate:POST: Missing form data")
 			sessDetails.Sess.Message = "Missing required rate class fields"
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
@@ -223,7 +223,7 @@ func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 		var err error
 		rateMap, err = database.DbwRead(RoomRatesEntity, rateClass[0])
 		if err != nil {
-			log.Println("upd_room_rate:POST: err=", err)
+			log.Println("upd_room_rate:POST:WARN:: Perhaps new room: err=", err)
 
 			// no such entry so the rate-class must be new
 			rm := make(map[string]interface{})

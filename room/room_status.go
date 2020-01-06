@@ -521,14 +521,19 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	} else {
 		r.ParseForm()
 
-		fname := r.Form["first_name"]
-		lname := r.Form["last_name"]
-		duration := r.Form["duration"]
-		roomNum := r.Form["room_num"]
-		numGuests := r.Form["num_guests"]
-		family := r.Form["family"]
-		//purchases := r.Form["purchases"]
-		//purchaseTotal := r.Form["purchase_total"]
+		fname, _ := r.Form["first_name"]
+		lname, _ := r.Form["last_name"]
+		duration, _ := r.Form["duration"]
+		roomNum, _ := r.Form["room_num"]
+		numGuests, _ := r.Form["num_guests"]
+		family, _ := r.Form["family"]
+
+		if len(fname[0]) == 0 || len(lname[0]) == 0 || len(duration[0]) == 0 || len(roomNum[0]) == 0 || len(numGuests[0]) == 0 || len(family[0]) == 0 {
+			log.Println("register:POST: Missing form data")
+			sessDetails.Sess.Message = `Missing required fields in Registration`
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+			return
+		}
 
 		// set in db
 		// read room status record and reset as booked with customers name

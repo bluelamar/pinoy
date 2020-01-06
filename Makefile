@@ -26,6 +26,11 @@ buildall: lint
 	#go test -c ./testing/integration/...
 	#cp integration.test ${GOPATH}/bin
 
+build-linux:
+	env GOOS=linux GOARCH=amd64 go build -v -ldflags "-X main.svcVersionString=$(VERSION) -X main.buildNum=$(BUILD_NUMBER) -X main.buildDate=$(PKG_DATE) -X main.buildSHA=$(GIT_COMMIT)" github.com/bluelamar/pinoy
+#	env GOOS=linux GOARCH=amd64 go build -v -ldflags "-X main.svcVersionString=$(VERSION) -X main.buildNum=$(BUILD_NUMBER) -X main.buildDate=$(PKG_DATE) -X main.buildSHA=$(GIT_COMMIT)" ${BUILD_SERVERS}
+#	env GOOS=linux GOARCH=arm go build -v -ldflags "-X main.svcVersionString=$(VERSION) -X main.buildNum=$(BUILD_NUMBER) -X main.buildDate=$(PKG_DATE) -X main.buildSHA=$(GIT_COMMIT)" ${BUILD_SERVERS}
+
 #start: buildall
 #	./scripts/make-start.sh
 

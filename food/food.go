@@ -291,11 +291,17 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 
-	item := r.Form["item"]
-	size := r.Form["item_size"]
-	cost := r.Form["item_price"]
+	item, _ := r.Form["item"]
+	size, _ := r.Form["item_size"]
+	cost, _ := r.Form["item_price"]
 
-	// TODO verify all fields are set
+	// verify all fields are set
+	if len(item) < 1 || len(item[0]) == 0 || len(size) < 1 || len(size[0]) == 0 || len(cost) < 1 || len(cost[0]) == 0 {
+		log.Println("upd_food:POST: Missing form data")
+		sessDetails.Sess.Message = "Missing required rate class fields"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+		return
+	}
 
 	id := makeItemID(item[0], size[0])
 
@@ -382,13 +388,12 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		r.ParseForm()
-		item := r.Form["item"]
-		size := r.Form["size"]
+		item, _ := r.Form["item"]
+		size, _ := r.Form["size"]
 		quantity := r.Form["quantity"]
-		//id := r.Form["id"]
-		roomNum := r.Form["room_num"]
+		roomNum, _ := r.Form["room_num"]
 
-		if len(item) < 1 || len(size) < 1 || len(quantity) < 1 {
+		if len(item) < 1 || len(item[0]) == 0 || len(size) < 1 || len(size[0]) == 0 || len(quantity) < 1 || len(quantity[0]) == 0 {
 			log.Println("purchase:ERROR: Missing required form data")
 			sessDetails.Sess.Message = `Missing required fields in Purchase Food Items`
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)

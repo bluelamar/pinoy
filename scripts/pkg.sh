@@ -1,6 +1,7 @@
 #!/bin/bash
 
-tar cvf pinoy.tar pinoy static scripts config.json cdb-local.ini Dockerfile_cdb
+tar cvf pinoy.tar pinoy static scripts config.json
+#tar cvf pinoy.tar pinoy static scripts config.json cdb-local.ini Dockerfile_cdb
 
 gzip pinoy.tar
 

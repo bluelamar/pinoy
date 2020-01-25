@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"sync"
 
 	"github.com/bluelamar/pinoy/database"
 	"github.com/bluelamar/pinoy/misc"
@@ -36,6 +37,74 @@ type RateDataEntry struct {
 
 type ByTUnit []RoomRate
 
+// global rate class map
+//  each entry for a rate class will be a map, key=num-hours(int), value=cost(float64)
+// TODO be sure this map gets updated by UpdRoomRate
+var rateClassMap map[string]map[int]float64
+
+// used to protect updates to rateClassMap
+var rateClassMutex sync.Mutex
+
+func getRoomRates() ([]RoomRateData, error) {
+	// []interface{}, error
+	rrs, err := database.DbwReadAll(RoomRatesEntity)
+	if err != nil {
+		log.Println("room_rates:ERROR: Failed to read room rates: err=", err)
+		return nil, err
+	}
+
+	rrds := make([]RoomRateData, len(rrs))
+	for k, v := range rrs {
+		val := v.(map[string]interface{})
+		rs := val["Rates"].([]interface{})
+		rates := make([]RoomRate, len(rs))
+
+		for k2, v2 := range rs {
+			val2 := v2.(map[string]interface{})
+			rr := RoomRate{
+				val2["TUnit"].(string),
+				val2["Cost"].(string),
+			}
+			rates[k2] = rr
+		}
+		sort.Sort(ByTUnit(rates))
+		rrd := RoomRateData{
+			val["RateClass"].(string),
+			rates,
+		}
+		rrds[k] = rrd
+	}
+	return rrds, nil
+}
+
+// InitRoomStatus sets up global data to be read in memory rather than frequently from the DB
+func InitRoomRates() {
+	// load the rateClassMap
+	rrds, err := getRoomRates() // []RoomRateData, error
+	if err != nil {
+		log.Println("room_rates:ERROR: InitRoomRates failed to read room rates: err=", err)
+		return
+	}
+
+	rateClassMutex.Lock()
+	rateClassMap = make(map[string]map[int]float64)
+	vmap := make(map[string]interface{})
+	for _, rrd := range rrds {
+		rrm := make(map[int]float64)
+		rateClassMap[rrd.RateClass] = rrm
+		for _, rr := range rrd.Rates { //[]RoomRate
+			// translate cost into float64 and hours into int
+			//vmap := make([string]interface{})
+			vmap["cost"] = misc.StripMonPrefix(rr.Cost)
+			cost := misc.XtractFloatField("cost", &vmap)
+			dur := ParseDuration(rr.TUnit)
+			rrm[dur] = cost
+			log.Println("FIX initroomrates: rc=", rrd.RateClass, " dur=", dur, " cost=", cost)
+		}
+	}
+	rateClassMutex.Unlock()
+}
+
 func (a ByTUnit) Len() int           { return len(a) }
 func (a ByTUnit) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByTUnit) Less(i, j int) bool { return a[i].TUnit < a[j].TUnit }
@@ -57,6 +126,7 @@ func RoomRates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	/* FIX
 	// []interface{}, error
 	rrs, err := database.DbwReadAll(RoomRatesEntity)
 	if err != nil {
@@ -86,6 +156,15 @@ func RoomRates(w http.ResponseWriter, r *http.Request) {
 			rates,
 		}
 		rrds[k] = rrd
+	} */
+
+	// []RoomRateData, error
+	rrds, err := getRoomRates()
+	if err != nil {
+		log.Println("room_rates:ERROR: Failed to read room rates: err=", err)
+		sessDetails.Sess.Message = "Internal error getting room rates"
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		return
 	}
 
 	tblData := RateDataTable{

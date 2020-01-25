@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bluelamar/pinoy/config"
 	"github.com/bluelamar/pinoy/database"
 )
 
@@ -152,4 +153,11 @@ func CopyDbUsage(fromDB, toDB, field string) error {
 	}
 
 	return nil
+}
+
+// StripMonPrefix will strip configured monetary prefix, ex: "$""
+func StripMonPrefix(str string) string {
+	mp := config.GetConfig().MonetarySymbol
+	str = strings.ReplaceAll(str, mp, "")
+	return strings.TrimSpace(str)
 }

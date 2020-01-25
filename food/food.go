@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bluelamar/pinoy/config"
-
 	"github.com/bluelamar/pinoy/database"
 	"github.com/bluelamar/pinoy/misc"
 	"github.com/bluelamar/pinoy/psession"
@@ -429,13 +427,6 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// strip monetary prefixes, ex: "$""
-func stripMonPrefix(str string) string {
-	mp := config.GetConfig().MonetarySymbol
-	str = strings.ReplaceAll(str, mp, "")
-	return str
-}
-
 func PurchaseSummary(w http.ResponseWriter, r *http.Request) {
 
 	misc.IncrRequestCnt()
@@ -513,7 +504,7 @@ func PurchaseSummary(w http.ResponseWriter, r *http.Request) {
 
 		purMap := make(map[string]interface{})
 		purMap["quant"] = quantity
-		purMap["price"] = stripMonPrefix(price) // strip the "$" from the price
+		purMap["price"] = misc.StripMonPrefix(price) // strip the "$" from the price
 
 		quant := misc.XtractIntField("quant", &purMap)
 		pr := misc.XtractFloatField("price", &purMap)

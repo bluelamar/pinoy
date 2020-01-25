@@ -223,6 +223,11 @@ func runRoomCheck(cfg *config.PinoyConfig) {
 	curRoomStati = stati
 }
 
+// perform inits on modules that are dependent on the database to be ready
+func doOneTimeInits() {
+	room.InitRoomStatus()
+}
+
 func main() {
 	/* FIX TODO   setup templates first
 	 */
@@ -272,11 +277,14 @@ func main() {
 	misc.InitStats()
 
 	// initialize DB then the "about to checkout rooms"
+	doOneTimeInit := true
 	initDbErr := initDB(cfg)
 	if initDbErr != nil {
 		log.Println("main:ERROR: Failed to init db - retry in a few minutes")
 	} else {
 		runRoomCheck(cfg)
+		doOneTimeInits()
+		doOneTimeInit = false
 	}
 
 	// setup background tasks
@@ -307,6 +315,10 @@ func main() {
 				}
 				if initDbErr == nil {
 					runRoomCheck(cfg)
+					if doOneTimeInit {
+						doOneTimeInits()
+						doOneTimeInit = false
+					}
 				}
 			case <-quit:
 				statsTicker.Stop()

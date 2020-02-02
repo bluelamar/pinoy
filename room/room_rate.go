@@ -38,8 +38,8 @@ type RateDataEntry struct {
 type ByTUnit []RoomRate
 
 // global rate class map
-//  each entry for a rate class will be a map, key=num-hours(int), value=cost(float64)
-// TODO be sure this map gets updated by UpdRoomRate
+// keyed by rate class string
+// value for a rate class will be a map, key=num-hours(int), value=cost(float64)
 var rateClassMap map[string]map[int]float64
 
 // used to protect updates to rateClassMap
@@ -86,12 +86,11 @@ func InitRoomRates() {
 		return
 	}
 
-	rateClassMutex.Lock()
-	rateClassMap = make(map[string]map[int]float64)
+	newRateClassMap := make(map[string]map[int]float64)
 	vmap := make(map[string]interface{})
 	for _, rrd := range rrds {
 		rrm := make(map[int]float64)
-		rateClassMap[rrd.RateClass] = rrm
+		newRateClassMap[rrd.RateClass] = rrm
 		for _, rr := range rrd.Rates { //[]RoomRate
 			// translate cost into float64 and hours into int
 			//vmap := make([string]interface{})
@@ -99,9 +98,10 @@ func InitRoomRates() {
 			cost := misc.XtractFloatField("cost", &vmap)
 			dur := ParseDuration(rr.TUnit)
 			rrm[dur] = cost
-			log.Println("FIX initroomrates: rc=", rrd.RateClass, " dur=", dur, " cost=", cost)
 		}
 	}
+	rateClassMutex.Lock()
+	rateClassMap = newRateClassMap
 	rateClassMutex.Unlock()
 }
 
@@ -125,38 +125,6 @@ func RoomRates(w http.ResponseWriter, r *http.Request) {
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
 	}
-
-	/* FIX
-	// []interface{}, error
-	rrs, err := database.DbwReadAll(RoomRatesEntity)
-	if err != nil {
-		log.Println("room_rates:ERROR: Failed to read room rates: err=", err)
-		sessDetails.Sess.Message = "Internal error getting room rates"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
-		return
-	}
-
-	rrds := make([]RoomRateData, len(rrs))
-	for k, v := range rrs {
-		val := v.(map[string]interface{})
-		rs := val["Rates"].([]interface{})
-		rates := make([]RoomRate, len(rs))
-
-		for k2, v2 := range rs {
-			val2 := v2.(map[string]interface{})
-			rr := RoomRate{
-				val2["TUnit"].(string),
-				val2["Cost"].(string),
-			}
-			rates[k2] = rr
-		}
-		sort.Sort(ByTUnit(rates))
-		rrd := RoomRateData{
-			val["RateClass"].(string),
-			rates,
-		}
-		rrds[k] = rrd
-	} */
 
 	// []RoomRateData, error
 	rrds, err := getRoomRates()
@@ -312,8 +280,12 @@ func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 			key = rateClass[0]
 		}
 
-		rates := (*rateMap)["Rates"]
+		// translate rateMap to form rateClassMap needs
+		newRateMap := make(map[int]float64)
+		vmap := make(map[string]interface{})
+
 		// if rates has TUnit entry matching newTimeUnit, remove it since it will be replaced
+		rates := (*rateMap)["Rates"]
 		newRates := make([]map[string]interface{}, 0)
 		rts := rates.([]interface{})
 		for _, v := range rts {
@@ -323,7 +295,17 @@ func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			newRates = append(newRates, v2)
+
+			vmap["cost"] = misc.StripMonPrefix(v2["Cost"].(string))
+			cost := misc.XtractFloatField("cost", &vmap)
+			dur := ParseDuration(tu)
+			newRateMap[dur] = cost
 		}
+
+		vmap["cost"] = misc.StripMonPrefix(newCost[0])
+		cost := misc.XtractFloatField("cost", &vmap)
+		dur := ParseDuration(newTimeUnitStr)
+		newRateMap[dur] = cost
 
 		newRate := make(map[string]interface{})
 		newRate["TUnit"] = newTimeUnitStr
@@ -340,6 +322,11 @@ func UpdRoomRate(w http.ResponseWriter, r *http.Request) {
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
 			return
 		}
+
+		// update the in memory rateClassMap
+		rateClassMutex.Lock()
+		rateClassMap[rateClass[0]] = newRateMap
+		rateClassMutex.Unlock()
 
 		http.Redirect(w, r, "/manager/room_rates", http.StatusFound)
 	}

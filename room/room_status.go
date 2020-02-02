@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bluelamar/pinoy/config"
+
 	"github.com/bluelamar/pinoy/database"
 	"github.com/bluelamar/pinoy/misc"
 	"github.com/bluelamar/pinoy/psession"
@@ -30,6 +32,7 @@ const (
 	roomUsageRN  = "RoomNum"
 	roomUsageTNG = "TotNumGuests"
 	roomUsageTH  = "TotHours"
+	roomUsageTC  = "TotCost"
 	roomUsageNTO = "NumTimesOccupied"
 )
 
@@ -38,6 +41,7 @@ type RoomUsage struct {
 	TotNumGuests     int
 	TotHours         float64
 	NumTimesOccupied int
+	TotCost          float64
 }
 type RoomUsageTable struct {
 	*psession.SessionDetails
@@ -64,8 +68,9 @@ type RoomState struct {
 
 type RoomStateTable struct {
 	*psession.SessionDetails
-	Rooms         []RoomState
-	OpenRoomsOnly bool
+	Rooms          []RoomState
+	OpenRoomsOnly  bool
+	MonetarySymbol string
 }
 type RoomStateEntry struct {
 	*psession.SessionDetails
@@ -287,6 +292,7 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 		sessDetails,
 		rtbl,
 		openRoomsOnly,
+		config.GetConfig().MonetarySymbol,
 	}
 	err = t.Execute(w, &roomData)
 	if err != nil {
@@ -382,8 +388,8 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 
 	// get the number guests and room usage times
 	num := misc.XtractIntField("NumGuests", rs)
-	ciTime, _ := (*rs)["CheckinTime"].(string)
 	coTime, _ := (*rs)["CheckoutTime"].(string)
+	numExtraGuests, _ := (*rs)["NumExtraGuests"].(int)
 
 	(*rs)["Status"] = OpenStatus
 	(*rs)["GuestInfo"] = ""
@@ -411,29 +417,54 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 		// TODO set flag force reload?
 	}
 
-	// now update room usage stats
+	// now update room usage stats TODO if anything changed - TODO set the total cost when registering
+	// compare the checkout time to the current time
+	var realDur time.Duration
+	_, nowTime := misc.TimeNow()
+	if clockoutTime, err := time.ParseInLocation(staff.DateTimeLongForm, coTime, misc.GetLocale()); err == nil {
+		realDur = nowTime.Sub(clockoutTime)
+	}
+	if realDur.Minutes() < float64(config.GetConfig().CheckoutGracePeriod) {
+		// no update required
+		return nil
+	}
+	log.Println("checkout: User has checked out past the grace period: overtime in minutes=", realDur.Minutes())
+
 	key := ""
+	ciTime, _ := (*rs)["CheckinTime"].(string)
 	rs, err = database.DbwRead(roomUsageEntity, room)
 	if err != nil {
+		if clockinTime, err := time.ParseInLocation(staff.DateTimeLongForm, ciTime, misc.GetLocale()); err == nil {
+			realDur = nowTime.Sub(clockinTime)
+		}
 		// lets make a new usage object
 		ru := map[string]interface{}{
 			roomUsageRN:  room,
-			roomUsageTNG: int(0),
+			roomUsageTNG: num,
 			roomUsageTH:  float64(0),
-			roomUsageNTO: int(0),
+			roomUsageNTO: int(1),
+			roomUsageTC:  float64(0),
 		}
 		rs = &ru
 		key = room
 	}
 
-	totGuestCnt := num + misc.XtractIntField(roomUsageTNG, rs)
-	(*rs)[roomUsageTNG] = totGuestCnt
+	extraRate := ""
+	rateClass := ""
+	rcMap, err := database.DbwRead(RoomsEntity, room)
+	if err == nil {
+		extraRate, _ = (*rcMap)["ExtraRate"].(string)
+		rateClass, _ = (*rcMap)["RateClass"].(string)
+	}
 
-	(*rs)[roomUsageNTO] = 1 + misc.XtractIntField(roomUsageNTO, rs)
-
-	// calculate the hours of room usage
-	hours, _ := calcDiffTime(ciTime, coTime)
+	// update the hours of room usage total
+	hours := realDur.Hours()
 	(*rs)[roomUsageTH] = hours + misc.XtractFloatField(roomUsageTH, rs)
+
+	// calculate the extra cost
+	// over_time * extra_cost per hour
+	cost, err := calcRoomCost(int(hours), rateClass, extraRate, numExtraGuests)
+	(*rs)[roomUsageTC] = cost + misc.XtractFloatField(roomUsageTC, rs)
 
 	err = database.DbwUpdate(roomUsageEntity, key, rs)
 	if err != nil {
@@ -452,13 +483,36 @@ func getMaxByHours(dur int, rcMap map[int]float64) float64 {
 			biggestHours = k
 		}
 	}
-	sum := rcMap[biggestHours]
+	if biggestHours == 0 {
+		// didnt find a duration > 0 && < dur ? was dur == 0 or negative number?
+		log.Println("getMaxByHours:ERROR: no max found: dur=", dur)
+		return 0
+	}
+	sum, _ := rcMap[biggestHours]
 	diff := dur - biggestHours
 	// repeat iterate keys to find biggest hours
 	if diff <= 0 {
 		return sum
 	}
 	return getMaxByHours(diff, rcMap) + sum
+}
+
+func calcRoomCost(duration int, rateClass, extraRate string, numExtraGuests int) (float64, error) {
+	totCost := float64(0)
+	// given duration, parse Days or Hours time-units - xlate Days to 24 and Hours to 1, xtract the number and multiply
+	// have: totHours
+	if duration == -1 {
+		log.Println("calcRoomCost:ERROR: Failed to parse duration=", duration, " in rateclass=", rateClass)
+	} else if rcMap, ok := rateClassMap[rateClass]; ok { // map[int]float64
+		totCost = getMaxByHours(duration, rcMap) // float64
+	}
+	extraRate = misc.StripMonPrefix(extraRate)
+	er := float64(1)
+	if len(extraRate) > 0 {
+		er, _ = strconv.ParseFloat(extraRate, 64)
+	}
+	totCost = totCost + (float64(duration) * er * float64(numExtraGuests))
+	return totCost, nil
 }
 
 // given duration, parse Days or Hours time-units - xlate Days to 24 and Hours to 1, xtract the number and multiply
@@ -625,27 +679,13 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		checkOutTime, err := CalcCheckoutTime(nowTime, duration[0])
 		(*rs)["CheckoutTime"] = checkOutTime
 
-		// get extraRate and numExtraGuests; then calculate: dur * extraRate * numExtraGuests
-		// calculate cost = totHours * hourlyRate + totHours * extraRate*numExtraGuests
-		// get hourly rate for the room
-		totCost := float64(0)
-		if rateClass, ok := (*rMap)["RateClass"].(string); ok {
-			// given duration, parse Days or Hours time-units - xlate Days to 24 and Hours to 1, xtract the number and multiply
-			// have: totHours
-			dur := ParseDuration(duration[0])
-			if dur == -1 {
-				log.Println("register:ERROR: Failed to parse duration=", duration[0], " in rateclass=", rateClass, " : room=", roomNum[0])
-			} else if rcMap, ok := rateClassMap[rateClass]; ok { // map[int]float64
-				totCost = getMaxByHours(dur, rcMap) // float64
-			}
-			extraRate = misc.StripMonPrefix(extraRate)
-			er := float64(0)
-			if len(extraRate) > 0 {
-				er, _ = strconv.ParseFloat(extraRate, 64)
-			}
-			log.Println("FIX register: totcost=", totCost, " dur=", dur, " exrate=", extraRate, " er=", er, " numexg=", numExtraGuests)
-			totCost = totCost + (float64(dur) * er * float64(numExtraGuests))
+		dur := ParseDuration(duration[0])
+		rateClass, _ := (*rMap)["RateClass"].(string)
+		totCost, err := calcRoomCost(dur, rateClass, extraRate, numExtraGuests)
+		if err != nil {
+			log.Println("register:ERROR: Failed to calculate room cost: duration=", duration[0], " in rateclass=", rateClass, " : room=", roomNum[0])
 		}
+
 		(*rs)["Cost"] = totCost
 
 		//(*rs)["Purchases"] = purchases[0]
@@ -661,7 +701,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// TODO missing extra guests and extra rate per person
 		roomState := RoomState{
 			RoomNum:        roomNum[0],
 			Status:         BookedStatus,
@@ -678,6 +717,38 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			PurchaseTotal:  "", // (*rs)["PurchaseTotal"].(string),
 		}
 		updateRoomStatus(roomNum[0], roomState)
+
+		// update the room usage record with the new hours and add the cost
+		key := ""
+		rs, err = database.DbwRead(roomUsageEntity, roomNum[0])
+		if err != nil {
+			// lets make a new usage object
+			ru := map[string]interface{}{
+				roomUsageRN:  roomNum[0],
+				roomUsageTNG: int(0),
+				roomUsageTH:  float64(0),
+				roomUsageNTO: int(0),
+				roomUsageTC:  float64(0),
+			}
+			rs = &ru
+			key = roomNum[0]
+		}
+
+		totGuestCnt := num + numExtraGuests + misc.XtractIntField(roomUsageTNG, rs)
+		(*rs)[roomUsageTNG] = totGuestCnt
+
+		(*rs)[roomUsageNTO] = 1 + misc.XtractIntField(roomUsageNTO, rs)
+
+		// calculate the hours of room usage
+		(*rs)[roomUsageTH] = float64(dur) + misc.XtractFloatField(roomUsageTH, rs)
+
+		// update the total cost
+		(*rs)[roomUsageTC] = totCost + misc.XtractFloatField(roomUsageTC, rs)
+
+		err = database.DbwUpdate(roomUsageEntity, key, rs)
+		if err != nil {
+			log.Println("register:ERROR: Failed to update room usage for room=", roomNum[0], " : err=", err)
+		}
 
 		http.Redirect(w, r, "/desk/room_hop?room="+roomNum[0]+"&citime="+nowStr+"&repeat=true", http.StatusFound)
 	}
@@ -728,6 +799,22 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 
 	timeStamp := ""
 	usageList := make([]RoomUsage, 0)
+
+	sort.SliceStable(resArray, func(i, j int) bool {
+		vmi := resArray[i].(map[string]interface{})
+		if nmi, exists := vmi[roomUsageRN]; exists {
+			namei, _ := nmi.(string)
+			var namej string
+			vmj := resArray[j].(map[string]interface{})
+			if nmj, exists := vmj[roomUsageRN]; exists {
+				namej, _ = nmj.(string)
+				return strings.Compare(namei, namej) < 0
+			}
+		}
+
+		return true
+	})
+
 	for _, v := range resArray {
 		vm := v.(map[string]interface{})
 		id := ""
@@ -748,7 +835,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 
 		totHours := misc.XtractFloatField(roomUsageTH, &vm)
 
-		// TODO totCost := mist.XtractFloatField(roomUsageTC, &vm)
+		totCost := misc.XtractFloatField(roomUsageTC, &vm)
 
 		guestCnt := misc.XtractIntField(roomUsageTNG, &vm)
 
@@ -759,7 +846,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 			TotNumGuests:     guestCnt,
 			TotHours:         totHours,
 			NumTimesOccupied: numTimesOcc,
-			// TODO TotCost: totCost,
+			TotCost:          totCost,
 		}
 		usageList = append(usageList, rusage)
 	}

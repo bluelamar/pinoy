@@ -24,11 +24,11 @@
 
 <table>
 <tr>
-<th>Room Number</th><th>Total Number of Guests</th><th>Total Hours Used</th><th>Number Times Occupied</th>
+<th>Room Number</th><th>Total Number of Guests</th><th>Total Hours Used</th><th>Number Times Occupied</th><th>Total Cost</th>
 </tr>
 {{range .RoomUsageList}}
 <tr>
-<td>{{.RoomNum}}</td><td>{{.TotNumGuests}}</td><td>{{.TotHours}}</td><td>{{.NumTimesOccupied}}</td>
+<td>{{.RoomNum}}</td><td>{{.TotNumGuests}}</td><td>{{.TotHours}}</td><td>{{.NumTimesOccupied}}</td><td>{{.TotCost}}</td>
 </tr>
 {{else}}
 No room usage to report

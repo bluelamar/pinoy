@@ -244,7 +244,7 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Room Status", "Room Status page for Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -260,7 +260,7 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("room_status: template parse error=", err)
 		sessDetails.Sess.Message = "Failed to get room status"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -269,7 +269,7 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 		if err := loadRoomsState(); err != nil {
 			log.Println("room_status: Cannot load room status: error=", err)
 			sessDetails.Sess.Message = "Failed to get room status"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 	}
@@ -284,7 +284,7 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("room_status:ERROR: Find ", openRooms[0], " rooms: err=", err)
 		sessDetails.Sess.Message = "Failed to get room status"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -298,7 +298,7 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("room_status:ERROR: Failed to return room status: err=", err)
 		sessDetails.Sess.Message = "Failed to get room status"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 	}
 }
 
@@ -382,7 +382,7 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	if err != nil {
 		log.Println("checkout:ERROR: Failed to read room status for room=", room, " : err=", err)
 		sessDetails.Sess.Message = "Failed to checkout: room=" + room
-		err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return err
 	}
 
@@ -405,7 +405,7 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	if err != nil {
 		log.Println("checkout:ERROR: Failed to update room status for room=", room, " : err=", err)
 		sessDetails.Sess.Message = "Failed to checkout: room=" + room
-		err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return err
 	}
 
@@ -542,7 +542,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Registration", "Register page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -552,7 +552,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		if !ok || len(rooms[0]) < 1 {
 			log.Println("register:ERROR: Missing required room param")
 			sessDetails.Sess.Message = "Failed to register - missing room number"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 		room := rooms[0]
@@ -580,7 +580,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("register:ERROR: Failed to read rate class=", rate, " : err=", err)
 			sessDetails.Sess.Message = "Failed to register - bad or missing room rate"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -588,7 +588,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			log.Println("register:ERROR: Failed to get rates: err=", err)
 			sessDetails.Sess.Message = "Failed to register - rates missing"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 		rrs3 := rrs2.([]interface{})
@@ -602,7 +602,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("register:ERROR: Failed to make register page for room=", room, " : err=", err)
 			sessDetails.Sess.Message = "Failed to make register page: room=" + room
-			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -615,7 +615,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("register:ERROR: Failed to exec register page for room=", room, " : err=", err)
 			sessDetails.Sess.Message = "Failed to make register page: room=" + room
-			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		}
 
 	} else {
@@ -631,7 +631,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		if len(fname[0]) == 0 || len(lname[0]) == 0 || len(duration[0]) == 0 || len(roomNum[0]) == 0 || len(numGuests[0]) == 0 || len(family[0]) == 0 {
 			log.Println("register:POST: Missing form data")
 			sessDetails.Sess.Message = `Missing required fields in Registration`
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -641,7 +641,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("register:ERROR: Failed to read room status for room=", roomNum[0], " : err=", err)
 			sessDetails.Sess.Message = "Failed to read room status: room=" + roomNum[0]
-			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -697,7 +697,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("register:ERROR: Failed to update room status for room=", roomNum[0], " : err=", err)
 			sessDetails.Sess.Message = "Failed to read room status: room=" + roomNum[0]
-			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -759,13 +759,13 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Room Usage", "Room Usage page to Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 	if r.Method != "GET" {
 		log.Println("ReportRoomUsage:ERROR: bad http method: should only be a GET")
 		sessDetails.Sess.Message = "Failed to get room usage"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -773,7 +773,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("ReportRoomUsage:ERROR: Failed to parse templates: err=", err)
 		sessDetails.Sess.Message = "Failed to get all room usage"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -793,7 +793,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(`ReportRoomUsage:ERROR: db readall error`, err)
 		sessDetails.Sess.Message = "Failed to get all room usage"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -861,7 +861,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	if err = t.Execute(w, &tblData); err != nil {
 		log.Println("ReportRoomUsage:ERROR: could not execute template: err=", err)
 		sessDetails.Sess.Message = "Failed to report room usage"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 	}
 }
 
@@ -871,7 +871,7 @@ func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Backup and Reset Room Usage", "Backup and Reset Room Usage page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 

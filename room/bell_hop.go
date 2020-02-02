@@ -53,7 +53,7 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Room Bell Hop", "Bell Hop page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -89,7 +89,7 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 		hlist, err := database.DbwFind(staff.StaffEntity, "Role", psession.ROLE_HOP)
 		if err != nil {
 			sessDetails.Sess.Message = "No bell hops"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -112,7 +112,7 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("room_hop:ERROR: Failed to parse template: err=", err)
 			sessDetails.Sess.Message = "Error with bell hops"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -127,7 +127,7 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("room_hop:ERROR: Failed to execute template : err=", err)
 			sessDetails.Sess.Message = "Error with bell hops"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 	} else {
@@ -146,14 +146,14 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("room_hop:ERROR: Failed to read room attendent=", hopper[0], " : err=", err)
 			sessDetails.Sess.Message = "Error with bell hop " + hopper[0]
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 		passwd, ok := (*umap)["Pwd"]
 		if !ok {
 			log.Println("room_hop:ERROR: Failed to check passwd for room attendent=", hopper[0], " : room=", room_num[0], " : err=", err)
 			sessDetails.Sess.Message = "PIN check Error with bell hop " + hopper[0]
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -181,7 +181,7 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, "/desk/room_hop?room="+room_num[0]+"&citime="+nowStr+"&repeat=false", http.StatusFound)
 			} else {
 				sessDetails.Sess.Message = "PIN check Error again with bell hop " + hopper[0]
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			}
 			return
 		}

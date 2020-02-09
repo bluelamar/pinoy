@@ -30,7 +30,7 @@
 </tr>
 {{range .StaffHours}}
 <tr>
-<td>{{.UserID}}</td><td>{{.LastClockinTime}}</td><td>{{.LastClockoutTime}}</td><td>{{.ExpectedHours}}</td><td>{{.TotalExpectedHours}}</td><td>{{.TotalHours}}</td>
+<td>{{.UserID}}</td><td>{{.LastClockinTime}}</td><td>{{.LastClockoutTime}}</td><td>{{.ExpectedHours}}</td><td>{{.TotalExpectedHours}}</td><td>{{printf "%.2f" .TotalHours}}</td>
 <td><a id="upd_staff_hours" class="button" href="/desk/upd_staff_hours?user={{.UserID}}&update=clockin">Clock in [{{.ClockInCnt}}]</a></td>
 <td><a id="upd_staff_hours" class="button" href="/desk/upd_staff_hours?user={{.UserID}}&update=clockout">Clock out [{{.ClockOutCnt}}]</a></td>
 

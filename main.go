@@ -319,6 +319,7 @@ func main() {
 						doOneTimeInits()
 						doOneTimeInit = false
 					}
+					log.Println("main: room init complete")
 				}
 			case <-quit:
 				statsTicker.Stop()

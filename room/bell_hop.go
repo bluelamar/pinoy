@@ -53,7 +53,7 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Room Bell Hop", "Bell Hop page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
 	}
 

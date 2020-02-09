@@ -28,7 +28,7 @@
 </tr>
 {{range .RoomUsageList}}
 <tr>
-<td>{{.RoomNum}}</td><td>{{.TotNumGuests}}</td><td>{{.TotHours}}</td><td>{{.NumTimesOccupied}}</td><td>{{.TotCost}}</td>
+<td>{{.RoomNum}}</td><td>{{.TotNumGuests}}</td><td>{{printf "%.2f" .TotHours}}</td><td>{{.NumTimesOccupied}}</td><td>{{printf "%.2f" .TotCost}}</td>
 </tr>
 {{else}}
 No room usage to report

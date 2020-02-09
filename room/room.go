@@ -38,7 +38,7 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Rooms", "Rooms page to Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
 	}
 	if r.Method != "GET" {
@@ -98,7 +98,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Update Room", "Update Room page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
 	}
 

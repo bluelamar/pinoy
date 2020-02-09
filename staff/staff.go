@@ -46,7 +46,7 @@ func Staff(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		log.Println("staff: bad http method: should only be a GET")
 		sessDetails.Sess.Message = "Bad request"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -54,7 +54,7 @@ func Staff(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("staff:ERROR: Failed to parse template: err=", err)
 		sessDetails.Sess.Message = "Internal error"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -62,7 +62,7 @@ func Staff(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("staff:ERROR: Failed to readall staff from db: err=", err)
 		sessDetails.Sess.Message = "Failed to read staff"
-		psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -125,7 +125,7 @@ func Staff(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("staff:ERROR: Failed to execute template: err=", err)
 		sessDetails.Sess.Message = "Failed to read staff"
-		psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 	}
 }
 
@@ -143,7 +143,7 @@ func AddStaff(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("add_staff: err=", err)
 			sessDetails.Sess.Message = "Internal error"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -164,7 +164,7 @@ func AddStaff(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("add_staff:ERROR: Failed to add staff: err=", err)
 			sessDetails.Sess.Message = "Failed to add staff"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		}
 	}
 }
@@ -252,7 +252,7 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 
 		if id == "" && lname == "" {
 			sessDetails.Sess.Message = "Missing user name to make staff update page"
-			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -262,7 +262,7 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println("upd_staff:ERROR: No staff with last name=", lname, " : err=", err)
 				sessDetails.Sess.Message = "No such employee: " + lname
-				psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+				psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 				return
 			}
 
@@ -309,7 +309,7 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println("upd_staff:ERROR: No staff with name=", id, " : err=", err)
 				sessDetails.Sess.Message = "Cant get user name to make staff update"
-				psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+				psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 				return
 			}
 
@@ -328,12 +328,12 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println("upd_staff:ERROR: Failed to delete staff=", id, " : err=", err)
 				sessDetails.Sess.Message = "Failed to delete staff: " + id
-				psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+				psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			} else {
 				// delete the employee from staff hours too
 				if err := DeleteStaffHoursEntity(id); err != nil {
 					sessDetails.Sess.Message = "Failed to delete staff hours data for user: " + id
-					_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusConflict)
+					_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 					return
 				}
 				http.Redirect(w, r, "/manager/staff", http.StatusFound)
@@ -346,7 +346,7 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("upd_staff:ERROR: Failed to parse template for update employee: err=", err)
 			sessDetails.Sess.Message = "Failed to update staff: " + id
-			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -367,7 +367,7 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("upd_staff:ERROR: Failed to execute template to update staff: err=", err)
 			sessDetails.Sess.Message = "Failed to update staff: " + id
-			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 	} else {
@@ -408,7 +408,7 @@ func UpdStaff(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("upd_staff:ERROR: Failed to execute template to update staff=", name, " : err=", err)
 			sessDetails.Sess.Message = "Failed to update staff: " + name
-			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 

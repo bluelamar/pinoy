@@ -58,7 +58,7 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		log.Println("ReportStaffHours:ERROR: bad http method: should only be a GET")
 		sessDetails.Sess.Message = "Failed to get staff hours"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -66,7 +66,7 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("ReportStaffHours:ERROR: Failed to parse templates: err=", err)
 		sessDetails.Sess.Message = "Failed to get all staff hours"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -86,7 +86,7 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(`ReportStaffHours:ERROR: db readall error`, err)
 		sessDetails.Sess.Message = "Failed to get all staff hours"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -182,7 +182,7 @@ func ReportStaffHours(w http.ResponseWriter, r *http.Request) {
 	if err = t.Execute(w, &tblData); err != nil {
 		log.Println("report_staff_hours:ERROR: could not execute template: err=", err)
 		sessDetails.Sess.Message = "Failed to report staff hours"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 	}
 
 }
@@ -311,7 +311,7 @@ func UpdateStaffHours(w http.ResponseWriter, r *http.Request) {
 		if userid == "" {
 			log.Println("update_staff_hours: Missing required usersid=", userid)
 			sessDetails.Sess.Message = "Failed to update hours for user: " + userid
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusNotFound)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -344,7 +344,7 @@ func UpdateStaffHours(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println("update_staff_hours:ERROR: clockin template failure: err=", err)
 				sessDetails.Sess.Message = "Failed to setup clockin for user: " + userid
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusNotFound)
+				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 				return
 			}
 
@@ -366,7 +366,7 @@ func UpdateStaffHours(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println("update_staff_hours:ERROR: Failed to execute clockin template: err=", err)
 				sessDetails.Sess.Message = "Failed clockin for user: " + userid
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusNotFound)
+				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			}
 			return
 		}
@@ -380,7 +380,7 @@ func UpdateStaffHours(w http.ResponseWriter, r *http.Request) {
 
 			if err := DeleteStaffHoursEntity(userid); err != nil {
 				sessDetails.Sess.Message = "Failed to delete user hours data for user: " + userid
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusConflict)
+				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			}
 		}
 	} else {

@@ -244,7 +244,7 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Room Status", "Room Status page for Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
 	}
 
@@ -474,6 +474,9 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	return nil
 }
 
+/*
+ * Returns the total cost by cycling thru the [hourRate=>cost] table
+ */
 func getMaxByHours(dur int, rcMap map[int]float64) float64 {
 	// which hourly rate applies? per day, 3 hours? 6 hours? etc
 	// iterate keys to find biggest hours that is <= than totHours
@@ -505,13 +508,16 @@ func calcRoomCost(duration int, rateClass, extraRate string, numExtraGuests int)
 		log.Println("calcRoomCost:ERROR: Failed to parse duration=", duration, " in rateclass=", rateClass)
 	} else if rcMap, ok := rateClassMap[rateClass]; ok { // map[int]float64
 		totCost = getMaxByHours(duration, rcMap) // float64
+
 	}
 	extraRate = misc.StripMonPrefix(extraRate)
 	er := float64(1)
 	if len(extraRate) > 0 {
 		er, _ = strconv.ParseFloat(extraRate, 64)
 	}
+	//log.Println("FIX calcRoomCost: dur=", duration, " :rateclass=", rateClass, " :xtraRate=", extraRate, " :er=", er, " :xtra-guests=", numExtraGuests, " :totcost=", totCost)
 	totCost = totCost + (float64(duration) * er * float64(numExtraGuests))
+	//log.Println("FIX calcRoomCost: totcost=", totCost)
 	return totCost, nil
 }
 
@@ -542,7 +548,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Registration", "Register page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR && sessDetails.Sess.Role != psession.ROLE_DSK {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
 	}
 
@@ -759,7 +765,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Room Usage", "Room Usage page to Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
 	}
 	if r.Method != "GET" {
@@ -871,7 +877,7 @@ func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 	sessDetails := psession.GetSessDetails(r, "Backup and Reset Room Usage", "Backup and Reset Room Usage page of Pinoy Lodge")
 	if sessDetails.Sess.Role != psession.ROLE_MGR {
 		sessDetails.Sess.Message = "No Permissions"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusUnauthorized)
 		return
 	}
 

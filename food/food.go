@@ -155,7 +155,7 @@ func Food(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("food: template parse error=", err)
 		sessDetails.Sess.Message = "Failed to get food items"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -164,7 +164,7 @@ func Food(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(`food:ERROR: db readall error`, err)
 		sessDetails.Sess.Message = "Failed to get all food items"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -178,7 +178,7 @@ func Food(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("food:ERROR: Failed to return food items: err=", err)
 		sessDetails.Sess.Message = "Failed to get food items"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 	}
 }
 
@@ -218,7 +218,7 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println("upd_food: Invalid Food item=", item, " : err=", err)
 				sessDetails.Sess.Message = `Internal error for food item`
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 				return
 			}
 		}
@@ -227,13 +227,13 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 			if rMap == nil {
 				log.Println("upd_item:delete: Item not specified")
 				sessDetails.Sess.Message = `Item not specified`
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 				return
 			}
 
 			if err := database.DbwDelete(foodEntity, rMap); err != nil {
 				sessDetails.Sess.Message = "Failed to delete item: " + item
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusConflict)
+				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 				return
 			}
 
@@ -248,7 +248,7 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("upd_food:ERROR: Failed to parse template: err=", err)
 			sessDetails.Sess.Message = "Failed to Update food item: " + item
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -272,7 +272,7 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("upd_food:ERROR: Failed to exec template: err=", err)
 			sessDetails.Sess.Message = `Internal error in Update Food Item`
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		}
 
 		return
@@ -281,7 +281,7 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		log.Println("upd_food:ERROR: bad http method: should only be a POST")
 		sessDetails.Sess.Message = `Bad request to Update Food Item`
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -295,7 +295,7 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 	if len(item) < 1 || len(item[0]) == 0 || len(size) < 1 || len(size[0]) == 0 || len(cost) < 1 || len(cost[0]) == 0 {
 		log.Println("upd_food:POST: Missing form data")
 		sessDetails.Sess.Message = "Missing required rate class fields"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -311,7 +311,7 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("upd_food:ERROR: Failed to update food item=", id, " : err=", err)
 		sessDetails.Sess.Message = `Internal error in Update Food Item`
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 	}
 
 	http.Redirect(w, r, "/desk/food", http.StatusFound)
@@ -345,7 +345,7 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("purchase:ERROR: Failed to make purchase page for room=", room, " : err=", err)
 			sessDetails.Sess.Message = "Failed to make purchase page: room=" + room
-			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -353,7 +353,7 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("purchase:ERROR: Failed to read food item=", item, " : err=", err)
 			sessDetails.Sess.Message = "Failed to get food item - bad or missing item"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -361,7 +361,7 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 		if foodItem == nil {
 			log.Println("purchase:ERROR: Failed to read food item=", item, " : err=", err)
 			sessDetails.Sess.Message = "Failed to get food item - missing item"
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -379,7 +379,7 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 				log.Println("purchase:ERROR: Failed to execute food purchase page for item=", item, " room=", room, ": err=", err)
 				sessDetails.Sess.Message = "Failed to make food purchase page: item=" + item + " room=" + room
 			}
-			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 
 		}
 	} else {
@@ -392,7 +392,7 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 		if len(item) < 1 || len(item[0]) == 0 || len(size) < 1 || len(size[0]) == 0 || len(quantity) < 1 || len(quantity[0]) == 0 {
 			log.Println("purchase:ERROR: Missing required form data")
 			sessDetails.Sess.Message = `Missing required fields in Purchase Food Items`
-			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusBadRequest)
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
@@ -550,7 +550,7 @@ func PurchaseSummary(w http.ResponseWriter, r *http.Request) {
 				log.Println("purchase_summary:ERROR: Failed to make purchase summary page for item=", item, " room=", room, " : err=", err)
 				sessDetails.Sess.Message = "Failed to make purchase summary page: item=" + item + " room=" + room
 			}
-			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 		err = t.Execute(w, purchaseData)
@@ -562,7 +562,7 @@ func PurchaseSummary(w http.ResponseWriter, r *http.Request) {
 				log.Println("purchase_summary:ERROR: Failed to execute food purchase page for item=", item, " room=", room, ": err=", err)
 				sessDetails.Sess.Message = "Failed to make food purchase summary page: item=" + item + " room=" + room
 			}
-			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 
 		}
 	}
@@ -579,7 +579,7 @@ func ReportFoodUsage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		log.Println("ReportFoodUsage:ERROR: bad http method: should only be a GET")
 		sessDetails.Sess.Message = "Failed to get food report"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -587,7 +587,7 @@ func ReportFoodUsage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("ReportFoodUsage:ERROR: Failed to parse templates: err=", err)
 		sessDetails.Sess.Message = "Failed to get food report"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -607,7 +607,7 @@ func ReportFoodUsage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(`ReportFoodUsage:ERROR: db readall error`, err)
 		sessDetails.Sess.Message = "Failed to get food report"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
 
@@ -650,7 +650,7 @@ func ReportFoodUsage(w http.ResponseWriter, r *http.Request) {
 	if err = t.Execute(w, &tblData); err != nil {
 		log.Println("ReportFoodUsage:ERROR: could not execute template: err=", err)
 		sessDetails.Sess.Message = "Failed to report food usage"
-		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusInternalServerError)
+		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 	}
 }
 

@@ -252,6 +252,11 @@ func (pDbInt *MDBInterface) UpdateM(entity, key string, rMap *map[string]interfa
 		_, err = pDbInt.Update(entity, "", "", (*rMap))
 	} else {
 		_, err = pDbInt.Create(entity, key, (*rMap))
+		/*
+		if err.Error().Contains("duplicate key error") {
+			// this should be update and not create
+			_, err = pDbInt.Update(entity, "", "", (*rMap))
+		} */
 	}
 
 	return err

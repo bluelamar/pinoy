@@ -321,7 +321,16 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 	fitem["Price"] = cost[0]
 	//Quantity int
 	fitem["ItemID"] = id
-	err := database.DbwUpdate(foodEntity, id, &fitem)
+
+	rMap, err := database.DbwRead(foodEntity, id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not_found") {
+			err = database.DbwUpdate(foodEntity, id, &fitem) // create
+		}
+	} else {
+		(*rMap)["Price"] = cost[0]
+		err = database.DbwUpdate(foodEntity, "", rMap) // update
+	}
 	if err != nil {
 		log.Println("upd_food:ERROR: Failed to update food item=", id, " : err=", err)
 		sessDetails.Sess.Message = `Internal error in Update Food Item`

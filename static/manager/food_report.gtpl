@@ -24,11 +24,11 @@
 
 <table>
 <tr>
-<th>Food Item</th><th>Total Number of Orders</th>
+<th>Food Item</th><th>Total Number of Orders</th><th>Total Cost</th>
 </tr>
 {{range .FoodUsageList}}
 <tr>
-<td>{{.ItemID}}</td><td>{{.TotOrders}}</td>
+<td>{{.ItemID}}</td><td>{{.TotOrders}}</td><td>{{printf "%.2f" .TotCost}}</td>
 </tr>
 {{else}}
 No food report

@@ -4,8 +4,11 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/bluelamar/pinoy/config"
 
 	"github.com/bluelamar/pinoy/database"
 	"github.com/bluelamar/pinoy/misc"
@@ -18,6 +21,7 @@ const (
 	foodUsageEntity = "food_usage" // database entity
 	foodUsageID     = "ItemID"
 	foodUsageTO     = "TotOrders"
+	foodUsageTC     = "TotCost"
 
 	SessFItems = "fitems"    // session key for slice of FoodItem
 	SessTCost  = "totalCost" // session key for total cost of food items purchased
@@ -26,6 +30,7 @@ const (
 type FoodUsage struct {
 	ItemID    string // FoodItem.Item + ":" +  FoodItem.Size
 	TotOrders int
+	TotCost   float64
 }
 type FoodUsageTable struct {
 	*psession.SessionDetails
@@ -51,13 +56,15 @@ type FoodRecord struct {
 	*psession.SessionDetails
 	FoodData FoodItem
 	Room     string
+	Items    []FoodItem
 }
 
 type PurchaseRecord struct {
 	*psession.SessionDetails
-	Items     []FoodItem
-	Room      string
-	TotalCost float64
+	Items       []FoodItem
+	Room        string
+	TotalCost   float64
+	MoneySymbol string
 }
 
 func makeItemID(item, size string) string {
@@ -263,10 +270,17 @@ func UpdFood(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// read in all food items
+		fitems, err := getFoodItems()
+		if err != nil {
+			log.Println(`upd_food:WARN: db readall error: continuing to allow update`, err)
+		}
+
 		updData := FoodRecord{
 			sessDetails,
 			foodData,
 			"",
+			fitems,
 		}
 		err = t.Execute(w, updData)
 		if err != nil {
@@ -369,6 +383,7 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 			sessDetails,
 			*foodItem,
 			room,
+			nil,
 		}
 		err = t.Execute(w, foodData)
 		if err != nil {
@@ -408,6 +423,7 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 			fu := map[string]interface{}{
 				foodUsageID: id,
 				foodUsageTO: int(0),
+				foodUsageTC: float64(0),
 			}
 			fue = &fu
 			key = id
@@ -416,6 +432,19 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 		quant, _ := strconv.Atoi(quantity[0])
 		sum := misc.XtractIntField(foodUsageTO, fue) + quant
 		(*fue)[foodUsageTO] = sum
+
+		tcost := misc.XtractFloatField(foodUsageTC, fue)
+		foodMap, err := database.DbwRead(foodEntity, id)
+		if err != nil || foodMap == nil {
+			log.Println("purchase:ERROR: Failed to read food item=", id, " : err=", err)
+		} else {
+			foodItem := makeFoodItem(*foodMap)
+			purMap := make(map[string]interface{})
+			purMap["price"] = misc.StripMonPrefix(foodItem.Price) // strip the "$" from the price
+			pr := misc.XtractFloatField("price", &purMap)
+			tcost = tcost + (pr * float64(quant))
+		}
+		(*fue)[foodUsageTC] = tcost
 
 		// update food_usage for the item
 		err = database.DbwUpdate(foodUsageEntity, key, fue)
@@ -453,6 +482,11 @@ func PurchaseSummary(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			log.Println("purchase_summary:WARN: error from get user session: err=", err)
+		}
+
+		cancel := ""
+		if cancels, ok := r.URL.Query()["cancel"]; ok {
+			cancel = cancels[0]
 		}
 
 		done := ""
@@ -509,23 +543,56 @@ func PurchaseSummary(w http.ResponseWriter, r *http.Request) {
 		quant := misc.XtractIntField("quant", &purMap)
 		pr := misc.XtractFloatField("price", &purMap)
 		cost := pr * float64(quant)
-		totalCost += cost
-
-		// create food item data for purchase summary
-		purchaseItem := FoodItem{
-			Item:     item,
-			Size:     size,
-			Price:    price,
-			Quantity: quant,
-			ItemID:   itemID,
-		}
 
 		if items == nil {
-			items = make([]FoodItem, 1)
-			items[0] = purchaseItem
-		} else {
-			items = append(items, purchaseItem)
+			items = make([]FoodItem, 0)
 		}
+		// if item was canceled, subtract it
+		if cancel == "true" {
+
+			if totalCost > 0 {
+				totalCost -= cost
+			}
+			// remove item from items list by making new list without the item
+			if len(items) > 0 {
+				newItems := make([]FoodItem, 0)
+				for ind, _ := range items {
+					if items[ind].ItemID == itemID {
+						continue
+					}
+					newItems = append(newItems, items[ind])
+				}
+				items = newItems
+			}
+
+			// update food usage table
+			if fue, ferr := database.DbwRead(foodUsageEntity, itemID); ferr == nil {
+				// update the item fields
+				torders := misc.XtractIntField(foodUsageTO, fue) - quant
+				tcost := misc.XtractFloatField(foodUsageTC, fue) - cost
+				(*fue)[foodUsageTO] = torders
+				(*fue)[foodUsageTC] = tcost
+				if err = database.DbwUpdate(foodUsageEntity, "", fue); err != nil {
+					log.Println("purchase_summary:ERROR: Failed to update food usage for item=", itemID, " : err=", err)
+				}
+			} else {
+				log.Println("purchase_summary:ERROR: Failed to read food usage entity for item=", itemID, " : err=", ferr)
+			}
+
+		} else {
+			totalCost += cost
+
+			// create food item data for purchase summary
+			purchaseItem := FoodItem{
+				Item:     item,
+				Size:     size,
+				Price:    price,
+				Quantity: quant,
+				ItemID:   itemID,
+			}
+			items = append(items, purchaseItem) // add the item to the session
+		}
+
 		if sess != nil {
 			sess.Values["fitems"] = items
 			sess.Values["totalCost"] = totalCost
@@ -539,6 +606,7 @@ func PurchaseSummary(w http.ResponseWriter, r *http.Request) {
 			items,
 			room,
 			totalCost,
+			config.GetConfig().MonetarySymbol,
 		}
 
 		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/purchase_summary.gtpl", "static/header.gtpl")
@@ -567,6 +635,12 @@ func PurchaseSummary(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
+type ByFoodUsage []FoodUsage
+
+func (a ByFoodUsage) Len() int           { return len(a) }
+func (a ByFoodUsage) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByFoodUsage) Less(i, j int) bool { return a[i].ItemID < a[j].ItemID }
 
 func ReportFoodUsage(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
@@ -632,13 +706,16 @@ func ReportFoodUsage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		orderCnt := misc.XtractIntField(foodUsageTO, &vm)
+		totCost := misc.XtractFloatField(foodUsageTC, &vm)
 
 		fusage := FoodUsage{
 			ItemID:    id,
 			TotOrders: orderCnt,
+			TotCost:   totCost,
 		}
 		usageList = append(usageList, fusage)
 	}
+	sort.Sort(ByFoodUsage(usageList))
 
 	tblData := FoodUsageTable{
 		sessDetails,

@@ -161,26 +161,33 @@ func frontpage(w http.ResponseWriter, r *http.Request) {
 }
 
 func initDB(cfg *config.PinoyConfig) error {
-	// which db implemnentation are we using?
+	// which db implementation are we using?
+	// FIX TODO refactor
 	if strings.Compare("", cfg.DbType) == 0 || strings.Compare("couchdb", cfg.DbType) == 0 {
 		db1 := new(database.CDBInterface)
 		var pDb database.DBInterface = db1
-		database.SetDB(&pDb)
+		dbiOld := database.SetDB(pDb)
 		err := database.DbwInit(cfg)
 		if err != nil {
 			log.Println("main:ERROR: db init error: couchdb error=", err)
 			//log.Fatal("Failed to create db: ", err)
 			return err
 		}
+		if dbiOld != nil {
+			dbiOld.Close(cfg)
+		}
 	} else if strings.Compare("mongodb", cfg.DbType) == 0 {
 		db1 := new(database.MDBInterface)
 		var pDb database.DBInterface = db1
-		database.SetDB(&pDb)
+		dbiOld := database.SetDB(pDb)
 		err := database.DbwInit(cfg)
 		if err != nil {
 			log.Println("main:ERROR: db init error: mongodb error=", err)
 			//log.Fatal("Failed to create db: ", err)
 			return err
+		}
+		if dbiOld != nil {
+			dbiOld.Close(cfg)
 		}
 	}
 
@@ -284,7 +291,7 @@ func main() {
 	} else {
 		runRoomCheck(cfg)
 		doOneTimeInits()
-		doOneTimeInit = false
+		doOneTimeInit = false // FIX TODO this should be set according to success of doOneTimeInits
 	}
 
 	// setup background tasks
@@ -318,8 +325,8 @@ func main() {
 					if doOneTimeInit {
 						doOneTimeInits()
 						doOneTimeInit = false
+						log.Println("main: room init complete")
 					}
-					log.Println("main: room init complete")
 				}
 			case <-quit:
 				statsTicker.Stop()

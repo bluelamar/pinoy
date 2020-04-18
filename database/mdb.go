@@ -58,6 +58,12 @@ func (pDbInt *MDBInterface) Init(cfg *config.PinoyConfig) error {
 	return nil
 }
 
+func (pDbInt *MDBInterface) Close(cfg *config.PinoyConfig) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.DbCommTimeout)*time.Second)
+	defer cancel()
+	return pDbInt.client.Disconnect(ctx)
+}
+
 func (pDbInt *MDBInterface) Create(entity, key string, val interface{}) (*map[string]interface{}, error) {
 	valMap := val.(map[string]interface{})
 	if _, ok := valMap["key"]; !ok {

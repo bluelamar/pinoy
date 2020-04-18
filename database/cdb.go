@@ -68,6 +68,11 @@ func (pDbInt *CDBInterface) Init(cfg *config.PinoyConfig) error {
 	return nil
 }
 
+func (pDbInt *CDBInterface) Close(cfg *config.PinoyConfig) error {
+	// TODO
+	return nil
+}
+
 func (pDbInt *CDBInterface) Create(entity, key string, val interface{}) (*map[string]interface{}, error) {
 	// create: POST -H "Content-Type: application/json" -H "Accept: application/json" http://localhost:8080/v1/link/${ENTITY} -d "${DATA}"
 	url := pDbInt.baseUrl + entity

@@ -105,6 +105,8 @@ test -x /usr/sbin/logrotate || exit 0
 
 ## Development Environment:
 
+Below is example for setting up CouchDB.
+
 Build the database:
 ```
 ./scripts/bld_cdb.sh

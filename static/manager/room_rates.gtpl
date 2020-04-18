@@ -20,7 +20,7 @@
   <td>{{.TUnit}} : {{.Cost}}</td>
 {{end}}
 
-<td><a id="upd_rate" class="button" href="/manager/upd_room_rate?rate_class={{.RateClass}}&update=true">Update Rate</a></td>
+<td><a id="upd_rate" class="button" href="/manager/upd_room_rate?rate_class={{.RateClass}}&update=true">Add or Update Rate</a></td>
 <td><a id="del_rate" class="button" href="/manager/upd_room_rate?rate_class={{.RateClass}}&update=delete">Delete Rate</a></td>
 </tr>
 

@@ -56,7 +56,7 @@ type RoomState struct {
 	GuestInfo      string
 	NumGuests      int
 	Duration       string
-	Cost           float64
+	Cost           string
 	CheckinTime    string
 	CheckoutTime   string
 	Rate           string
@@ -80,6 +80,16 @@ type RoomStateEntry struct {
 type RegisterData struct {
 	*psession.SessionDetails
 	RoomNum         string
+	DurationOptions []string
+}
+
+type UpdateRegData struct {
+	*psession.SessionDetails
+	RoomNum         string
+	FirstName       string
+	LastName        string
+	NumGuests       int
+	Duration        string
 	DurationOptions []string
 }
 
@@ -108,6 +118,7 @@ func xlateToRoomStatus(val map[string]interface{}) *RoomState {
 		dur = str.(string)
 	}
 	cost := misc.XtractFloatField("Cost", &val)
+	var costStr string = fmt.Sprintf("%.2f", cost)
 	ci := ""
 	if str, exists := val["CheckinTime"]; exists {
 		ci = str.(string)
@@ -139,7 +150,7 @@ func xlateToRoomStatus(val map[string]interface{}) *RoomState {
 		GuestInfo:      gi,
 		NumGuests:      numg,
 		Duration:       dur,
-		Cost:           cost,
+		Cost:           costStr,
 		CheckinTime:    ci,
 		CheckoutTime:   co,
 		Rate:           rt,
@@ -386,6 +397,9 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 		return err
 	}
 
+	// FIX TODO add history record for this room to the db - what should be the key? <room><checkout-time>
+	// (*rs)["Status"] = ssessDetails.Sess.User  // add desk person - still need bell-hop
+
 	// get the number guests and room usage times
 	num := misc.XtractIntField("NumGuests", rs)
 	coTime, _ := (*rs)["CheckoutTime"].(string)
@@ -481,7 +495,7 @@ func getMaxByHours(dur int, rcMap map[int]float64) float64 {
 	// which hourly rate applies? per day, 3 hours? 6 hours? etc
 	// iterate keys to find biggest hours that is <= than totHours
 	biggestHours := int(0)
-	for k, _ := range rcMap {
+	for k := range rcMap {
 		if k > biggestHours && k <= dur {
 			biggestHours = k
 		}
@@ -508,20 +522,21 @@ func calcRoomCost(duration int, rateClass, extraRate string, numExtraGuests int)
 		log.Println("calcRoomCost:ERROR: Failed to parse duration=", duration, " in rateclass=", rateClass)
 	} else if rcMap, ok := rateClassMap[rateClass]; ok { // map[int]float64
 		totCost = getMaxByHours(duration, rcMap) // float64
-
 	}
+
 	extraRate = misc.StripMonPrefix(extraRate)
 	er := float64(1)
 	if len(extraRate) > 0 {
 		er, _ = strconv.ParseFloat(extraRate, 64)
 	}
-	//log.Println("FIX calcRoomCost: dur=", duration, " :rateclass=", rateClass, " :xtraRate=", extraRate, " :er=", er, " :xtra-guests=", numExtraGuests, " :totcost=", totCost)
+
+	//log.Println("FIX calcRoomCost: dur=", duration, " :rateclass=", rateClass, " :xtraRate=", extraRate, " :er=", er, " :xtra-guests=", numExtraGuests, " :totcost=", totCost, " :fixtmp=", fixTmp)
 	totCost = totCost + (float64(duration) * er * float64(numExtraGuests))
 	//log.Println("FIX calcRoomCost: totcost=", totCost)
 	return totCost, nil
 }
 
-// given duration, parse Days or Hours time-units - xlate Days to 24 and Hours to 1, xtract the number and multiply
+// ParseDuration will parse duration, Days or Hours time-units - xlate Days to 24 and Hours to 1, xtract the number and multiply
 func ParseDuration(duration string) int {
 	timeUnit := int(1)
 	index := strings.Index(duration, "Days")
@@ -563,17 +578,23 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		}
 		room := rooms[0]
 
-		regAction := ""
+		regAction := "checkin"
 		if regActions, ok := r.URL.Query()["reg"]; ok {
 			regAction = regActions[0]
 		}
 
 		if regAction == "checkout" {
+			// FIX TODO we will need a checkout page so desk can enter the bell hop name
 			err := checkoutRoom(room, w, r, sessDetails)
 			if err == nil {
-				http.Redirect(w, r, "/desk/room_status?register=open", http.StatusTemporaryRedirect)
+				http.Redirect(w, r, "/desk/room_status?register="+BookedStatus, http.StatusTemporaryRedirect)
 			}
 			return
+		}
+
+		regTmpl := "static/desk/register.gtpl"
+		if regAction == "update" {
+			regTmpl = "static/desk/room_update.gtpl"
 		}
 
 		rate := ""
@@ -604,23 +625,54 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			durations[k] = v2["TUnit"].(string)
 		}
 
-		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", "static/desk/register.gtpl", "static/header.gtpl")
+		t, err := template.ParseFiles("static/layout.gtpl", "static/body_prefix.gtpl", regTmpl, "static/header.gtpl")
 		if err != nil {
-			log.Println("register:ERROR: Failed to make register page for room=", room, " : err=", err)
-			sessDetails.Sess.Message = "Failed to make register page: room=" + room
+			log.Println("register:ERROR: Failed to make ", regAction, " page for room=", room, " : err=", err)
+			sessDetails.Sess.Message = "Failed to make " + regAction + " page: room=" + room
 			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
 
-		regData := RegisterData{
-			sessDetails,
-			room,
-			durations,
+		if regAction == "checkin" {
+			regData := RegisterData{
+				sessDetails,
+				room,
+				durations,
+			}
+			err = t.Execute(w, regData)
+		} else {
+			rs, rerr := database.DbwRead(RoomStatusEntity, room)
+			if rerr != nil {
+				log.Println("register-update:ERROR: Failed to read room status for room=", room, " : err=", err)
+				sessDetails.Sess.Message = "Failed to Update room registration: room=" + room
+				err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+				return
+			}
+			guest := (*rs)["GuestInfo"].(string) // break in 2 to get last name - seperator is ' '
+			guestInfo := strings.Split(guest, " ")
+			fname := guestInfo[0]
+			lname := ""
+			if len(guestInfo) > 1 {
+				lname = guestInfo[1]
+			}
+			numGuests, _ := (*rs)["NumGuests"].(int32)
+			ng := int(numGuests)
+			duration := (*rs)["Duration"].(string)
+			updData := UpdateRegData{
+				sessDetails,
+				room,
+				fname,
+				lname,
+				ng,
+				duration,
+				durations,
+			}
+			err = t.Execute(w, updData)
 		}
-		err = t.Execute(w, regData)
+
 		if err != nil {
-			log.Println("register:ERROR: Failed to exec register page for room=", room, " : err=", err)
-			sessDetails.Sess.Message = "Failed to make register page: room=" + room
+			log.Println("register:ERROR: Failed to exec ", regAction, " page for room=", room, " : err=", err)
+			sessDetails.Sess.Message = "Failed to " + regAction + " register page: room=" + room
 			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		}
 
@@ -633,12 +685,17 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		roomNum, _ := r.Form["room_num"]
 		numGuests, _ := r.Form["num_guests"]
 		family, _ := r.Form["family"]
+		update, _ := r.Form["update"]
 
-		if len(fname[0]) == 0 || len(lname[0]) == 0 || len(duration[0]) == 0 || len(roomNum[0]) == 0 || len(numGuests[0]) == 0 || len(family[0]) == 0 {
+		if (len(fname[0]) == 0 && len(lname[0]) == 0) || len(duration[0]) == 0 || len(roomNum[0]) == 0 || len(numGuests[0]) == 0 || len(family[0]) == 0 {
 			log.Println("register:POST: Missing form data")
 			sessDetails.Sess.Message = `Missing required fields in Registration`
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
+		}
+		registration := true
+		if len(update) > 0 && update[0] == "update" {
+			registration = false
 		}
 
 		// set in db
@@ -681,9 +738,24 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		(*rs)["Duration"] = duration[0]
 
 		nowStr, nowTime := misc.TimeNow()
-		(*rs)["CheckinTime"] = nowStr
-		checkOutTime, err := CalcCheckoutTime(nowTime, duration[0])
-		(*rs)["CheckoutTime"] = checkOutTime
+		var checkOutTime string
+		if registration {
+			(*rs)["CheckinTime"] = nowStr
+			checkOutTime, err = CalcCheckoutTime(nowTime, duration[0])
+			(*rs)["CheckoutTime"] = checkOutTime
+		} else {
+			// this is an update to the registration - the checkin time remains the same but the checkout could have changed
+			ciTime, perr := time.ParseInLocation(staff.DateTimeLongForm, (*rs)["CheckinTime"].(string), misc.GetLocale())
+			if perr != nil {
+				log.Println("register:ERROR: Failed to parse checkin time: checkin=", (*rs)["CheckinTime"].(string), " : room=", roomNum[0])
+				sessDetails.Sess.Message = "Failed to update room registration: room=" + roomNum[0]
+				err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+				return
+			}
+			checkOutTime, err = CalcCheckoutTime(ciTime, duration[0])
+			(*rs)["CheckoutTime"] = checkOutTime
+			nowStr = (*rs)["CheckinTime"].(string) // use original checkin time
+		}
 
 		dur := ParseDuration(duration[0])
 		rateClass, _ := (*rMap)["RateClass"].(string)
@@ -692,13 +764,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			log.Println("register:ERROR: Failed to calculate room cost: duration=", duration[0], " in rateclass=", rateClass, " : room=", roomNum[0])
 		}
 
+		oldCost, _ := (*rs)["Cost"].(float64)
 		(*rs)["Cost"] = totCost
 
 		//(*rs)["Purchases"] = purchases[0]
 		//(*rs)["PurchaseTotal"] = purchaseTotal[0]
 
 		// put status record back into db
-		// TODO record for the customer ?
+		// TODO record for the customer ? YES they want a history of the room usage
 		err = database.DbwUpdate(RoomStatusEntity, "", rs)
 		if err != nil {
 			log.Println("register:ERROR: Failed to update room status for room=", roomNum[0], " : err=", err)
@@ -707,13 +780,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		var totalStr string = fmt.Sprintf("%.2f", totCost)
 		roomState := RoomState{
 			RoomNum:        roomNum[0],
 			Status:         BookedStatus,
 			GuestInfo:      guestInfo,
 			NumGuests:      num,
 			Duration:       duration[0],
-			Cost:           totCost,
+			Cost:           totalStr,
 			CheckinTime:    nowStr,
 			CheckoutTime:   checkOutTime,
 			Rate:           (*rs)["Rate"].(string),
@@ -749,14 +823,19 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		(*rs)[roomUsageTH] = float64(dur) + misc.XtractFloatField(roomUsageTH, rs)
 
 		// update the total cost
-		(*rs)[roomUsageTC] = totCost + misc.XtractFloatField(roomUsageTC, rs)
+		// for update, need the difference between the old cost and the new cost - that difference would be added to room usage total cost
+		(*rs)[roomUsageTC] = totCost - oldCost + misc.XtractFloatField(roomUsageTC, rs)
 
 		err = database.DbwUpdate(roomUsageEntity, key, rs)
 		if err != nil {
 			log.Println("register:ERROR: Failed to update room usage for room=", roomNum[0], " : err=", err)
 		}
 
-		http.Redirect(w, r, "/desk/room_hop?room="+roomNum[0]+"&citime="+nowStr+"&repeat=true", http.StatusFound)
+		var oldCostStr string = ""
+		if registration == false {
+			oldCostStr = fmt.Sprintf("%.2f", oldCost)
+		}
+		http.Redirect(w, r, "/desk/room_hop?room="+roomNum[0]+"&citime="+nowStr+"&repeat=true&total="+totalStr+"&oldcost="+oldCostStr, http.StatusFound)
 	}
 }
 

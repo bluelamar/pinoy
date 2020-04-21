@@ -36,7 +36,7 @@
   {{end}}
   </select>
   </td></tr>
-  <tr><td>Extra Rate per Person</td><td>
+  <tr><td>Hourly Rate per Extra Person</td><td>
   <input required placeholder="Extra Rate per Person" id="extra_rate" name="extra_rate" value="{{.Room.ExtraRate}}">
   </td></tr>
   </table>

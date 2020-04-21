@@ -32,10 +32,13 @@ type BellHopsTable struct {
 
 type HopperTable struct {
 	*psession.SessionDetails
-	RoomNum     string
-	CheckinTime string
-	Hoppers     []string
-	Repeat      string
+	RoomNum        string
+	CheckinTime    string
+	Hoppers        []string
+	Repeat         string
+	Total          string
+	OldCost        string
+	MonetarySymbol string
 }
 
 // currently clocked in
@@ -61,27 +64,38 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 
 		room := ""
-		rooms, ok := r.URL.Query()["room"]
-		if !ok || len(rooms[0]) < 1 {
-			log.Println("room_hop: missing Url param: room")
-		} else {
+		if rooms, ok := r.URL.Query()["room"]; ok {
 			room = rooms[0]
+		} else {
+			log.Println("room_hop: missing Url param: room")
 		}
 
 		citime := ""
-		citimes, ok := r.URL.Query()["citime"]
-		if !ok || len(citimes[0]) < 1 {
-			log.Println("room_hop: missing Url param: citime")
-		} else {
+		if citimes, ok := r.URL.Query()["citime"]; ok {
 			citime = citimes[0]
+		} else {
+			log.Println("room_hop: missing check in time param: citime")
 		}
 
 		repeat := ""
-		repeats, ok := r.URL.Query()["repeat"]
-		if !ok || len(repeats[0]) < 1 {
-			log.Println("room_hop: missing Url param: repeat")
-		} else {
+		if repeats, ok := r.URL.Query()["repeat"]; ok {
 			repeat = repeats[0]
+		} else {
+			log.Println("room_hop: missing repeat param: repeat")
+		}
+
+		total := ""
+		if totals, ok := r.URL.Query()["total"]; ok {
+			total = totals[0]
+		} else {
+			log.Println("room_hop: missing room total param: total")
+		}
+
+		oldCost := ""
+		if oldcosts, ok := r.URL.Query()["oldcost"]; ok {
+			oldCost = oldcosts[0]
+		} else {
+			log.Println("room_hop: missing room old cost param: oldcost")
 		}
 
 		// make list of hop names
@@ -116,12 +130,16 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		monSymbol := config.GetConfig().MonetarySymbol
 		regData := HopperTable{
 			sessDetails,
 			room,
 			citime,
 			hoppers,
 			repeat,
+			total,
+			oldCost,
+			monSymbol,
 		}
 		err = t.Execute(w, regData)
 		if err != nil {
@@ -138,6 +156,8 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 		bellHopPin := r.Form["bell_hop_pin"]
 		room_num := r.Form["room_num"]
 		repeat := r.Form["repeat"] // if true then can repeat upon failure
+		oldCost := r.Form["oldcost"]
+		total := r.Form["total"]
 
 		if strings.Compare(hopper[0], hopperChoice) == 0 {
 			hopper[0] = hopperID[0]
@@ -157,7 +177,11 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		/* TODO set in db: BellHopEntity
+		/* FIX TODO set in db for room history: BellHopEntity
+			room
+			desk user name
+			bell hop name
+
 			type BellHop struct {
 			- userid : UserID
 			- room : Room
@@ -177,14 +201,17 @@ func RoomHop(w http.ResponseWriter, r *http.Request) {
 			log.Println("room_hop: room attendent pin not a match=", hopper[0], " : room=", room_num[0])
 			misc.IncrFailedLoginCnt()
 			if strings.Compare(repeat[0], "true") == 0 {
+				// FIX TODO add to room history: failed login for room, deskUser, bellHop, status=failed-pin
 				nowStr, _ := misc.TimeNow()
-				http.Redirect(w, r, "/desk/room_hop?room="+room_num[0]+"&citime="+nowStr+"&repeat=false", http.StatusFound)
+				http.Redirect(w, r, "/desk/room_hop?room="+room_num[0]+"&citime="+nowStr+"&repeat=false&total="+total[0]+"&oldcost="+oldCost[0], http.StatusFound)
 			} else {
 				sessDetails.Sess.Message = "PIN check Error again with bell hop " + hopper[0]
 				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			}
 			return
 		}
+
+		// FIX TODO add to room history: room, deskUser, bellHop, status=good-pin
 
 		// check if hop is clocked in, if not, clock them in and show warning
 		clockedIn, _, _ := staff.IsUserLoggedIn(hopper[0])

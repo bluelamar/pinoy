@@ -12,7 +12,7 @@
 
 <table>
 <tr>
-<th>Room Number</th><th>Number Beds</th><th>Bed Size</th><th>Rate Class</th><th>Number People Sleeps</th><th>Extra Rate per person</th><th>Update</th><th>Delete</th>
+<th>Room Number</th><th>Number Beds</th><th>Bed Size</th><th>Rate Class</th><th>Number People Sleeps</th><th>Hourly Rate per Extra Person</th><th>Update</th><th>Delete</th>
 </tr>
 {{range .Rooms}}
 

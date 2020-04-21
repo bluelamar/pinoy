@@ -342,6 +342,7 @@ func main() {
 	http.HandleFunc("/signin", signin)
 	http.HandleFunc("/signout", signout)
 	http.HandleFunc("/desk/register", room.Register)
+	// FIX http.HandleFunc("/desk/reg_upd", room.Register)
 	http.HandleFunc("/desk/room_status", room.RoomStatus)
 	http.HandleFunc("/desk/room_stati", roomStati) // AJAX api return JSON
 	http.HandleFunc("/desk/room_hop", room.RoomHop)

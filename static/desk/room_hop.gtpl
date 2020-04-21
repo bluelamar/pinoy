@@ -1,9 +1,16 @@
 {{ define "pagecontent" }}
 
-<h1>Room Bell Hop</h1>
+<h1>Cost and Bell Hop Assignment</h1>
 
 {{if and .Sess .Sess.User}}
 <p><h3>{{.Sess.User}} : {{.Sess.Role}} Page</h3></p>
+
+{{if eq .OldCost ""}}
+The cost for the room is {{.MonetarySymbol}} {{.Total}}
+{{else}}
+The new cost for the room is {{.MonetarySymbol}} {{.Total}}
+The previous cost was {{.MonetarySymbol}} {{.OldCost}}
+{{end}}
 
 {{if eq .Repeat "false"}}
 <p>
@@ -47,7 +54,9 @@ Invalid PIN was specified, please try again:
     </td>
     </tr>
     </table>
-    <input type="hidden" id="repeat" name="repeat" value="{{.Repeat}}">
+    <input type="hidden" id="oldcost" name="oldcost" value="{{.OldCost}}" />
+    <input type="hidden" id="total" name="total" value="{{.Total}}" />
+    <input type="hidden" id="repeat" name="repeat" value="{{.Repeat}}" />
     <input type="submit" name="commit" value="Submit" />
   </form>
 

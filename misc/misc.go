@@ -60,7 +60,7 @@ func XtractIntField(fieldName string, vmap *map[string]interface{}) int {
 		if inum, err := strconv.Atoi(istr); err == nil {
 			return inum
 		} else {
-			log.Println("xtract-int: Parse err=", err, " : for string=", istr)
+			log.Println("xtract-int:WARN: Parse err=", err, " : for string=", istr)
 			return num
 		}
 	}
@@ -81,7 +81,7 @@ func XtractFloatField(fieldName string, vmap *map[string]interface{}) float64 {
 		if f, err := strconv.ParseFloat(fstr, 64); err == nil {
 			return f
 		} else {
-			log.Println("xtract-float: Parse err=", err, " : for string=", fstr)
+			log.Println("xtract-float:WARN: Parse err=", err, " : field=", fieldName, " : value=", fstr)
 			return num
 		}
 	}

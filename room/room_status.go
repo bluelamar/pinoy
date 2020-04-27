@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	RoomStatusEntity = "room_status" // database entity
-	roomUsageEntity  = "room_usage"  // database entity
+	roomStatusEntity  = "room_status" // database entity for current room status
+	roomUsageEntity   = "room_usage"  // database entity for room usage summary
+	roomHistoryEntity = "room_hist"   // database entity for room history details
 
 	// room status
 	BookedStatus = "booked"
@@ -171,7 +172,7 @@ func loadRoomsState() error {
 			// other task already loaded so nothing to do
 			return
 		}
-		roomStati, err = database.DbwReadAll(RoomStatusEntity)
+		roomStati, err = database.DbwReadAll(roomStatusEntity)
 		if err != nil {
 			return
 		}
@@ -389,7 +390,7 @@ func calcDiffTime(ciTime, coTime string) (float64, float64) {
 }
 
 func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetails *psession.SessionDetails) error {
-	rs, err := database.DbwRead(RoomStatusEntity, room)
+	rs, err := database.DbwRead(roomStatusEntity, room)
 	if err != nil {
 		log.Println("checkout:ERROR: Failed to read room status for room=", room, " : err=", err)
 		sessDetails.Sess.Message = "Failed to checkout: room=" + room
@@ -397,13 +398,13 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 		return err
 	}
 
-	// FIX TODO add history record for this room to the db - what should be the key? <room><checkout-time>
-	// (*rs)["Status"] = ssessDetails.Sess.User  // add desk person - still need bell-hop
-
 	// get the number guests and room usage times
 	num := misc.XtractIntField("NumGuests", rs)
 	coTime, _ := (*rs)["CheckoutTime"].(string)
 	numExtraGuests, _ := (*rs)["NumExtraGuests"].(int)
+	totCost := misc.XtractFloatField("Cost", rs)
+	var totCostStr string = fmt.Sprintf("%.2f", totCost)
+	ciTime, _ := (*rs)["CheckinTime"].(string)
 
 	(*rs)["Status"] = OpenStatus
 	(*rs)["GuestInfo"] = ""
@@ -415,7 +416,7 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	(*rs)["CheckoutTime"] = ""
 	(*rs)["Purchase"] = ""
 	(*rs)["PurchaseTotal"] = ""
-	err = database.DbwUpdate(RoomStatusEntity, "", rs)
+	err = database.DbwUpdate(roomStatusEntity, "", rs)
 	if err != nil {
 		log.Println("checkout:ERROR: Failed to update room status for room=", room, " : err=", err)
 		sessDetails.Sess.Message = "Failed to checkout: room=" + room
@@ -428,24 +429,25 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 		updateRoomStatus(room, *roomState)
 	} else {
 		log.Println("checkout:ERROR: Failed to update in-mem checkout room=", room)
-		// TODO set flag force reload?
+		// TODO set flag force reload
 	}
 
-	// now update room usage stats TODO if anything changed - TODO set the total cost when registering
+	// update room usage stats if anything changed - set the total cost when registering
 	// compare the checkout time to the current time
-	var realDur time.Duration
-	_, nowTime := misc.TimeNow()
+	var realDur time.Duration // over time
+	nowStr, nowTime := misc.TimeNow()
 	if clockoutTime, err := time.ParseInLocation(staff.DateTimeLongForm, coTime, misc.GetLocale()); err == nil {
 		realDur = nowTime.Sub(clockoutTime)
 	}
 	if realDur.Minutes() < float64(config.GetConfig().CheckoutGracePeriod) {
 		// no update required
+		// redirect to checkout page - which should show current charge - allows desk to enter bell-hop
+		http.Redirect(w, r, "/desk/checkout?room="+room+"&charge="+totCostStr+"&over=0&checkin="+ciTime+"&checkout="+nowStr, http.StatusTemporaryRedirect)
 		return nil
 	}
 	log.Println("checkout: User has checked out past the grace period: overtime in minutes=", realDur.Minutes())
 
 	key := ""
-	ciTime, _ := (*rs)["CheckinTime"].(string)
 	rs, err = database.DbwRead(roomUsageEntity, room)
 	if err != nil {
 		if clockinTime, err := time.ParseInLocation(staff.DateTimeLongForm, ciTime, misc.GetLocale()); err == nil {
@@ -484,6 +486,13 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	if err != nil {
 		log.Println("checkout:ERROR: Failed to update room usage for room=", room, " : err=", err)
 	}
+
+	// redirect to checkout page - which should show current over-charge - allows desk to enter bell-hop
+	var costStr string = fmt.Sprintf("%.2f", cost)
+
+	newTotCost := cost + totCost
+	var newTotStr string = fmt.Sprintf("%.2f", newTotCost)
+	http.Redirect(w, r, "/desk/checkout?room="+room+"&charge="+newTotStr+"&over="+costStr+"&origCost="+totCostStr+"&checkin="+ciTime+"&checkout="+nowStr, http.StatusTemporaryRedirect)
 
 	return nil
 }
@@ -530,9 +539,7 @@ func calcRoomCost(duration int, rateClass, extraRate string, numExtraGuests int)
 		er, _ = strconv.ParseFloat(extraRate, 64)
 	}
 
-	//log.Println("FIX calcRoomCost: dur=", duration, " :rateclass=", rateClass, " :xtraRate=", extraRate, " :er=", er, " :xtra-guests=", numExtraGuests, " :totcost=", totCost, " :fixtmp=", fixTmp)
 	totCost = totCost + (float64(duration) * er * float64(numExtraGuests))
-	//log.Println("FIX calcRoomCost: totcost=", totCost)
 	return totCost, nil
 }
 
@@ -556,6 +563,7 @@ func ParseDuration(duration string) int {
 	return -1
 }
 
+// Register customer in a room
 func Register(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 
@@ -584,10 +592,9 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if regAction == "checkout" {
-			// FIX TODO we will need a checkout page so desk can enter the bell hop name
 			err := checkoutRoom(room, w, r, sessDetails)
-			if err == nil {
-				http.Redirect(w, r, "/desk/room_status?register="+BookedStatus, http.StatusTemporaryRedirect)
+			if err != nil {
+				log.Println("ERROR:register: Failure checking out room=", room, " err=", err)
 			}
 			return
 		}
@@ -641,7 +648,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			}
 			err = t.Execute(w, regData)
 		} else {
-			rs, rerr := database.DbwRead(RoomStatusEntity, room)
+			rs, rerr := database.DbwRead(roomStatusEntity, room)
 			if rerr != nil {
 				log.Println("register-update:ERROR: Failed to read room status for room=", room, " : err=", err)
 				sessDetails.Sess.Message = "Failed to Update room registration: room=" + room
@@ -700,7 +707,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 		// set in db
 		// read room status record and reset as booked with customers name
-		rs, err := database.DbwRead(RoomStatusEntity, roomNum[0])
+		rs, err := database.DbwRead(roomStatusEntity, roomNum[0])
 		if err != nil {
 			log.Println("register:ERROR: Failed to read room status for room=", roomNum[0], " : err=", err)
 			sessDetails.Sess.Message = "Failed to read room status: room=" + roomNum[0]
@@ -772,10 +779,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 		// put status record back into db
 		// TODO record for the customer ? YES they want a history of the room usage
-		err = database.DbwUpdate(RoomStatusEntity, "", rs)
+		err = database.DbwUpdate(roomStatusEntity, "", rs)
 		if err != nil {
 			log.Println("register:ERROR: Failed to update room status for room=", roomNum[0], " : err=", err)
-			sessDetails.Sess.Message = "Failed to read room status: room=" + roomNum[0]
+			sessDetails.Sess.Message = "Failed to update room status: room=" + roomNum[0]
 			err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 			return
 		}
@@ -835,7 +842,8 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		if registration == false {
 			oldCostStr = fmt.Sprintf("%.2f", oldCost)
 		}
-		http.Redirect(w, r, "/desk/room_hop?room="+roomNum[0]+"&citime="+nowStr+"&repeat=true&total="+totalStr+"&oldcost="+oldCostStr, http.StatusFound)
+		extraGuestCntStr := strconv.Itoa(numExtraGuests)
+		http.Redirect(w, r, "/desk/room_hop?room="+roomNum[0]+"&citime="+nowStr+"&repeat=true&total="+totalStr+"&oldcost="+oldCostStr+"&totguests="+numGuests[0]+"&extguests="+extraGuestCntStr, http.StatusFound)
 	}
 }
 
@@ -919,11 +927,8 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		totHours := misc.XtractFloatField(roomUsageTH, &vm)
-
 		totCost := misc.XtractFloatField(roomUsageTC, &vm)
-
 		guestCnt := misc.XtractIntField(roomUsageTNG, &vm)
-
 		numTimesOcc := misc.XtractIntField(roomUsageNTO, &vm)
 
 		rusage := RoomUsage{

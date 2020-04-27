@@ -1,31 +1,23 @@
 {{ define "pagecontent" }}
 
-<h1>Cost and Bell Hop Assignment</h1>
+<h1>Checkout Bell Hop Assignment</h1>
 
 {{if and .Sess .Sess.User}}
 <p><h3>{{.Sess.User}} : {{.Sess.Role}} Page</h3></p>
 
-{{if eq .OldCost ""}}
-The cost for the room is {{.MonetarySymbol}} {{.Total}}
-{{else}}
-The new cost for the room is {{.MonetarySymbol}} {{.Total}}
-The previous cost was {{.MonetarySymbol}} {{.OldCost}}
+{{if ne .OldCost ""}}
+The original charge for the room was {{.MonetarySymbol}} {{.OldCost}}
+The over time charge is {{.MonetarySymbol}} {{.OverCost}}
 {{end}}
+Total charge for the room is {{.MonetarySymbol}} {{.Total}}
 
-{{if eq .Repeat "false"}}
-<p>
-<div class="specialmsg">
-Invalid PIN was specified, please try again:
-</div>
-</p>
-{{end}}
 
-<p>Bell Hop</p>
-  <form action="/desk/room_hop" method="post">
+<p>Choose Room Attendant</p>
+  <form action="/desk/checkout" method="post">
     <table>
     <tr>
     <td>Room</td><td>
-    <input required placeholder="Room" label="false" spellcheck="false" class="is-sensitive" value="{{.RoomNum}}" name="room_num" id="room_num" />
+    <input readonly placeholder="Room" label="false" spellcheck="false" class="is-sensitive" value="{{.RoomNum}}" name="room_num" id="room_num" />
     </td>
     </tr>
     <tr>
@@ -34,7 +26,12 @@ Invalid PIN was specified, please try again:
     </td>
     </tr>
     <tr>
-    <td>Bell Hop PIN</td>
+    <td>Checkout Time</td><td>
+    <input readonly required placeholder="Checkout Time" label="false" value="{{.CheckoutTime}}" name="cotime" id="cotime" />
+    </td>
+    </tr>
+    <tr>
+    <td>Room Attendant</td>
     <td>
     <select id="hopper" name="hopper" >
     {{range $element := .Hoppers}}
@@ -49,16 +46,13 @@ Invalid PIN was specified, please try again:
     <td>
     <input placeholder="Input User ID if not in List" label="false" spellcheck="false" class="is-sensitive" value="" name="user_id" id="user_id" />
     </td>
-    <td>
-    <input required type="password" placeholder="PIN" label="false" spellcheck="false" class="is-sensitive" value="" name="bell_hop_pin" id="bell_hop_pin" />
-    </td>
     </tr>
     </table>
-    <input type="hidden" id="totguests" name="totguests" value="{{.TotGuests}}" />
-    <input type="hidden" id="extguests" name="extguests" value="{{.ExtraGuests}}" />
+{{if ne .OldCost ""}}
     <input type="hidden" id="oldcost" name="oldcost" value="{{.OldCost}}" />
+    <input type="hidden" id="overcost" name="overcost" value="{{.OverCost}}" />
+{{end}}
     <input type="hidden" id="total" name="total" value="{{.Total}}" />
-    <input type="hidden" id="repeat" name="repeat" value="{{.Repeat}}" />
     <input type="submit" name="commit" value="Submit" />
   </form>
 

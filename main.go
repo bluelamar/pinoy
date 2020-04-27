@@ -162,33 +162,27 @@ func frontpage(w http.ResponseWriter, r *http.Request) {
 
 func initDB(cfg *config.PinoyConfig) error {
 	// which db implementation are we using?
-	// FIX TODO refactor
+	var pDb database.DBInterface
+	var dbName string
 	if strings.Compare("", cfg.DbType) == 0 || strings.Compare("couchdb", cfg.DbType) == 0 {
-		db1 := new(database.CDBInterface)
-		var pDb database.DBInterface = db1
-		dbiOld := database.SetDB(pDb)
-		err := database.DbwInit(cfg)
-		if err != nil {
-			log.Println("main:ERROR: db init error: couchdb error=", err)
-			//log.Fatal("Failed to create db: ", err)
-			return err
-		}
-		if dbiOld != nil {
-			dbiOld.Close(cfg)
-		}
+		dbName = "couchdb"
+		pDb = &database.CDBInterface{}
 	} else if strings.Compare("mongodb", cfg.DbType) == 0 {
-		db1 := new(database.MDBInterface)
-		var pDb database.DBInterface = db1
-		dbiOld := database.SetDB(pDb)
-		err := database.DbwInit(cfg)
-		if err != nil {
-			log.Println("main:ERROR: db init error: mongodb error=", err)
-			//log.Fatal("Failed to create db: ", err)
-			return err
-		}
+		dbName = "mongodb"
+		pDb = &database.MDBInterface{}
+	}
+
+	dbiOld := database.SetDB(pDb)
+	err := database.DbwInit(cfg)
+	if err != nil {
+		log.Println("main:ERROR: db init error: ", dbName, " error=", err)
 		if dbiOld != nil {
-			dbiOld.Close(cfg)
+			database.SetDB(dbiOld) // reset to the old db if the new one failed
 		}
+		return err
+	}
+	if dbiOld != nil {
+		dbiOld.Close(cfg)
 	}
 
 	log.Println("pinoy:main: db init success")
@@ -342,7 +336,7 @@ func main() {
 	http.HandleFunc("/signin", signin)
 	http.HandleFunc("/signout", signout)
 	http.HandleFunc("/desk/register", room.Register)
-	// FIX http.HandleFunc("/desk/reg_upd", room.Register)
+	http.HandleFunc("/desk/checkout", room.RoomCheckout)
 	http.HandleFunc("/desk/room_status", room.RoomStatus)
 	http.HandleFunc("/desk/room_stati", roomStati) // AJAX api return JSON
 	http.HandleFunc("/desk/room_hop", room.RoomHop)
@@ -361,6 +355,8 @@ func main() {
 	http.HandleFunc("/manager/upd_room_rate", room.UpdRoomRate)
 	http.HandleFunc("/manager/report_room_usage", room.ReportRoomUsage)
 	http.HandleFunc("/manager/backup_room_usage", room.BackupRoomUsage)
+	http.HandleFunc("/manager/report_room_history", room.ReportRoomHistory)
+	http.HandleFunc("/manager/backup_room_history", room.BackupRoomHistory)
 	http.HandleFunc("/manager/upd_food", food.UpdFood)
 	http.HandleFunc("/manager/report_food_usage", food.ReportFoodUsage)
 	http.HandleFunc("/manager/backup_food_usage", food.BackupFoodUsage)

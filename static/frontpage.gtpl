@@ -38,6 +38,7 @@ roomStateTimer();
       <li><a href="/desk/report_staff_hours" class="pinoylink">Clock-in/Clock-out Staff</a></li>
       {{if eq .Sess.Role "Manager"}}
       <p><b>Managerial Actions</b></p>
+      <li><a href="/manager/report_room_history" class="pinoylink">Room History Report</a></li>
       <li><a href="/manager/report_room_usage" class="pinoylink">Room Usage Report</a></li>
       <li><a href="/manager/room_rates" class="pinoylink">Add or Update Room Rates</a></li>
       <li><a href="/manager/rooms" class="pinoylink">Add or Update Rooms</a></li>

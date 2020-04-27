@@ -1,6 +1,6 @@
 {{ define "pagecontent" }}
 
-<h1>Room Usage</h1>
+<h1>Room Usage Summary</h1>
 
 {{if eq .Sess.Role "Manager"}}
 <p><h2>Hello {{.Sess.User}}</h2></p>

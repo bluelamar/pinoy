@@ -267,7 +267,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		var roomStatus *map[string]interface{}
 		key = ""
 		if update {
-			roomStatus, err = database.DbwRead(RoomStatusEntity, roomNum[0])
+			roomStatus, err = database.DbwRead(roomStatusEntity, roomNum[0])
 			if err == nil {
 				(*roomStatus)["Rate"] = roomRate[0]
 			}
@@ -284,7 +284,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 			roomStatus = &rs
 			key = roomNum[0]
 		}
-		err = database.DbwUpdate(RoomStatusEntity, key, roomStatus)
+		err = database.DbwUpdate(roomStatusEntity, key, roomStatus)
 		if err != nil {
 			log.Println("upd_room:POST:ERROR: Failed to create or update room status=", roomNum[0], " :err=", err)
 

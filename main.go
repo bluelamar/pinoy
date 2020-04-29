@@ -185,7 +185,7 @@ func initDB(cfg *config.PinoyConfig) error {
 		dbiOld.Close(cfg)
 	}
 
-	log.Println("pinoy:main: db init success")
+	//log.Println("pinoy:main: db init success")
 	return nil
 }
 
@@ -283,6 +283,7 @@ func main() {
 	if initDbErr != nil {
 		log.Println("main:ERROR: Failed to init db - retry in a few minutes")
 	} else {
+		log.Println("main: DB initialized")
 		runRoomCheck(cfg)
 		doOneTimeInits()
 		doOneTimeInit = false // FIX TODO this should be set according to success of doOneTimeInits

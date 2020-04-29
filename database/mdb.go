@@ -27,6 +27,7 @@ func NewMDatabase() MDBInterface {
 	return pDbInt
 }
 
+// Init will initialized the DB with the given configuration
 func (pDbInt *MDBInterface) Init(cfg *config.PinoyConfig) error {
 	pwd, err := cfg.DecryptDbPwd()
 	if err != nil {
@@ -37,7 +38,7 @@ func (pDbInt *MDBInterface) Init(cfg *config.PinoyConfig) error {
 	port := strconv.Itoa(cfg.DbPort)
 	// use the database to auth on ubuntu-18.04 client
 	// url := "mongodb://" + loginCreds + cfg.DbUrl + ":" + port + "/pinoy" // ex: mongodb://foo:bar@localhost:27017/pinoy
-	url := "mongodb://" + loginCreds + cfg.DbUrl + ":" + port // works on mac
+	url := "mongodb://" + loginCreds + cfg.DbURL + ":" + port // works on mac
 	if len(cfg.DbAuthDb) > 0 {
 		url = url + "/" + cfg.DbAuthDb
 	}
@@ -58,19 +59,22 @@ func (pDbInt *MDBInterface) Init(cfg *config.PinoyConfig) error {
 	return nil
 }
 
+// Close will close the database resource
 func (pDbInt *MDBInterface) Close(cfg *config.PinoyConfig) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.DbCommTimeout)*time.Second)
 	defer cancel()
 	return pDbInt.client.Disconnect(ctx)
 }
 
+// Create will create an entry with the given value and key
 func (pDbInt *MDBInterface) Create(entity, key string, val interface{}) (*map[string]interface{}, error) {
 	valMap := val.(map[string]interface{})
 	if _, ok := valMap["key"]; !ok {
 		valMap["key"] = key
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+	ctx, cf := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+	defer cf()
 	coll := pDbInt.client.Database(pDbInt.cfg.DbName).Collection(entity)
 	res, err := coll.InsertOne(ctx, valMap)
 	if err != nil {
@@ -84,9 +88,11 @@ func (pDbInt *MDBInterface) Create(entity, key string, val interface{}) (*map[st
 	return &result, nil
 }
 
+// Read will read the entry for the given entity keyed by id
 func (pDbInt *MDBInterface) Read(entity, id string) (*map[string]interface{}, error) {
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+	ctx, cf := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+	defer cf()
 	coll := pDbInt.client.Database(pDbInt.cfg.DbName).Collection(entity)
 	if coll == nil {
 		return nil, errors.New("failed to find entity=" + entity)
@@ -112,10 +118,12 @@ func (pDbInt *MDBInterface) Read(entity, id string) (*map[string]interface{}, er
 	return &result, nil
 }
 
+// ReadAll reads all entries of the given entry
 func (pDbInt *MDBInterface) ReadAll(entity string) ([]interface{}, error) {
 	return pDbInt.Find(entity, "", "")
 }
 
+// Update the entity with key in the map
 func (pDbInt *MDBInterface) Update(entity, id, rev string, val map[string]interface{}) (string, error) {
 
 	var filter bson.D
@@ -131,7 +139,8 @@ func (pDbInt *MDBInterface) Update(entity, id, rev string, val map[string]interf
 		filter = bson.D{{"key", id}}
 	}
 	update := bson.D{{"$set", val}}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+	ctx, cf := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+	defer cf()
 	coll := pDbInt.client.Database(pDbInt.cfg.DbName).Collection(entity)
 	opts := options.Update().SetUpsert(false)
 	result, err := coll.UpdateOne(ctx, filter, update, opts)
@@ -145,6 +154,7 @@ func (pDbInt *MDBInterface) Update(entity, id, rev string, val map[string]interf
 	return "", nil
 }
 
+// Delete the entity keyed by the given id
 func (pDbInt *MDBInterface) Delete(entity, id, rev string) error {
 
 	opts := options.Delete().SetCollation(&options.Collation{
@@ -153,7 +163,8 @@ func (pDbInt *MDBInterface) Delete(entity, id, rev string) error {
 		CaseLevel: false,
 	})
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+	ctx, cf := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+	defer cf()
 	coll := pDbInt.client.Database(pDbInt.cfg.DbName).Collection(entity)
 	res, err := coll.DeleteOne(ctx, bson.D{{"key", id}}, opts)
 	if err != nil {
@@ -166,9 +177,11 @@ func (pDbInt *MDBInterface) Delete(entity, id, rev string) error {
 	return errors.New("failed to delete entity=" + entity + " id=" + id)
 }
 
+// Find the list of entities matching the field with the given value
 func (pDbInt *MDBInterface) Find(entity, field, value string) ([]interface{}, error) {
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+	ctx, cf := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+	defer cf()
 	coll := pDbInt.client.Database(pDbInt.cfg.DbName).Collection(entity)
 
 	var err error
@@ -223,6 +236,7 @@ func convertToNative(value interface{}) interface{} {
 	return value
 }
 
+// DeleteM deletes the entity keyed by the key value in the map
 func (pDbInt *MDBInterface) DeleteM(entity string, rMap *map[string]interface{}) error {
 
 	if key, ok := (*rMap)["key"].(string); ok {
@@ -234,7 +248,8 @@ func (pDbInt *MDBInterface) DeleteM(entity string, rMap *map[string]interface{})
 			Strength:  1,
 			CaseLevel: false,
 		})
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+		ctx, cf := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
+		defer cf()
 		coll := pDbInt.client.Database(pDbInt.cfg.DbName).Collection(entity)
 		res, err := coll.DeleteOne(ctx, bson.D{{"_id", id}}, opts)
 		if err != nil {
@@ -250,6 +265,7 @@ func (pDbInt *MDBInterface) DeleteM(entity string, rMap *map[string]interface{})
 	return errors.New("missing required key")
 }
 
+// UpdateM updates the entity with the values from the map
 func (pDbInt *MDBInterface) UpdateM(entity, key string, rMap *map[string]interface{}) error {
 
 	var err error
@@ -259,10 +275,10 @@ func (pDbInt *MDBInterface) UpdateM(entity, key string, rMap *map[string]interfa
 	} else {
 		_, err = pDbInt.Create(entity, key, (*rMap))
 		/*
-		if err.Error().Contains("duplicate key error") {
-			// this should be update and not create
-			_, err = pDbInt.Update(entity, "", "", (*rMap))
-		} */
+			if err.Error().Contains("duplicate key error") {
+				// this should be update and not create
+				_, err = pDbInt.Update(entity, "", "", (*rMap))
+			} */
 	}
 
 	return err

@@ -34,7 +34,7 @@ func (pDbInt *CDBInterface) Init(cfg *config.PinoyConfig) error {
 	}
 	// build the string for the server: ex: http://localhost:5984/_session
 	port := strconv.Itoa(cfg.DbPort)
-	url := cfg.DbUrl + ":" + port + "/"
+	url := cfg.DbURL + ":" + port + "/"
 	//var dbint CDBInterface
 	pDbInt.baseUrl = url
 	url = pDbInt.baseUrl + "_session"

@@ -8,10 +8,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 )
 
-// decrypt from base64 to decrypted string
+// Decrypt from base64 to decrypted string
 func Decrypt(keyText, cryptoText string) string {
 
 	// key := []byte(keyText)
@@ -39,7 +38,7 @@ func Decrypt(keyText, cryptoText string) string {
 	return fmt.Sprintf("%s", ciphertext)
 }
 
-// encrypt string then encode to base64
+// Encrypt string then encode to base64
 func Encrypt(keyText, clearText string) string {
 
 	//key := []byte(keyText)
@@ -85,10 +84,10 @@ func normalizeKey(keyText string) []byte {
 	} else {
 		key = make([]byte, 32)
 	}
-
-	if paddingLen != 0 {
-		log.Println("encrypt: key is either too short or too long: len=", klen, " so must truncate to 32 or pad by ", paddingLen, " bytes")
-	}
+	/*
+		if paddingLen != 0 {
+			log.Println("encrypt: key is either too short or too long: len=", klen, " so must truncate to 32 or pad by ", paddingLen, " bytes")
+		} */
 	for i, v := range []byte(keyText) {
 		if i == 32 {
 			break
@@ -101,6 +100,7 @@ func normalizeKey(keyText string) []byte {
 	return key
 }
 
+// HashIt creates a hash of the given string
 func HashIt(text string) string {
 	h := md5.New()
 	sum := h.Sum([]byte(text))

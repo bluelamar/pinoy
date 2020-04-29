@@ -6,9 +6,10 @@ import (
 	"log"
 )
 
+// PinoyConfig represents configuration properties for the Pinoy application
 type PinoyConfig struct {
 	DbType                    string // supported type, currently either "couchdb" or "mongodb"
-	DbUrl                     string
+	DbURL                     string
 	DbName                    string
 	DbPort                    int
 	DbUser                    string
@@ -27,13 +28,17 @@ type PinoyConfig struct {
 
 var pcfg *PinoyConfig
 
+// SetConfig sets the configuration for the Pinoy application
 func SetConfig(cfg *PinoyConfig) {
 	pcfg = cfg
 }
+
+// GetConfig returns the global config object
 func GetConfig() *PinoyConfig {
 	return pcfg
 }
 
+// LoadConfig will load the config from the given file and return the config object
 func LoadConfig(fpath string) (*PinoyConfig, error) {
 	content, err := ioutil.ReadFile(fpath)
 	if err != nil {
@@ -55,8 +60,8 @@ func (cfg *PinoyConfig) NormalizeConfig() {
 	if cfg.DbType == "" {
 		cfg.DbType = "mongodb"
 	}
-	if cfg.DbUrl == "" {
-		cfg.DbUrl = "127.0.0.1"
+	if cfg.DbURL == "" {
+		cfg.DbURL = "127.0.0.1"
 	}
 	if cfg.DbName == "" {
 		cfg.DbName = "pinoy"

@@ -215,7 +215,7 @@ func runRoomCheck(cfg *config.PinoyConfig) {
 	// time period : cfg.RoomStatusMonitorInterval
 	// set this up in memory so that the browser javascript will make call to
 	// load it quickly
-	dur := time.Duration(time.Minute * time.Duration(5))    // cfg.RoomStatusMonitorInterval*2))
+	dur := time.Duration(time.Minute * time.Duration(cfg.CheckoutGracePeriod))
 	stati, err := room.GetRoomStati(room.BookedStatus, dur) // ([]RoomState, error)
 	if err != nil {
 		log.Println("main:runRoomCheck:ERROR: err=", err)

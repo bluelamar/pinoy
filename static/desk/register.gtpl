@@ -36,6 +36,7 @@
     <tr><td>Room Number</td><td>
     <input readonly placeholder="Room Number" id="room_num" name="room_num" value="{{.RoomNum}}" />
     </td></tr></table>
+    <input type="hidden" name="{{.Sess.CsrfToken}}" value="{{.Sess.CsrfParam}}" />
     <input type="submit" name="commit" value="Register" />
   </form>
 

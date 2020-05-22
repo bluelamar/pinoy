@@ -91,6 +91,11 @@ func GetUserSession(w http.ResponseWriter, r *http.Request) (*sessions.Session, 
 	return sess, nil
 }
 
+func MakeCsrfToken(ps *PinoySession) string {
+	token := config.HashIt(ps.User + ps.Role + ps.SessID)
+	return token
+}
+
 func SessAttrs(r *http.Request) *PinoySession {
 
 	session, err := store.Get(r, CookieNameSID)
@@ -111,14 +116,17 @@ func SessAttrs(r *http.Request) *PinoySession {
 	if sessRole, ok := session.Values["role"].(string); ok {
 		role = sessRole
 	}
+
 	sess := &PinoySession{
 		Auth:      session.Values["authenticated"].(bool),
 		User:      user,
 		Role:      role,
 		SessID:    session.ID,
-		CsrfToken: "",
+		CsrfToken: "yahboy",
 		CsrfParam: "",
 	}
+	csrfVal := MakeCsrfToken(sess)
+	sess.CsrfParam = csrfVal
 	return sess
 }
 

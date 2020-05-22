@@ -3,6 +3,7 @@ package misc
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 )
 
 var timeLocale *time.Location
+var numReg *regexp.Regexp
 
 func GetLocale() *time.Location {
 	if timeLocale == nil {
@@ -159,5 +161,17 @@ func CopyDbUsage(fromDB, toDB, field string) error {
 func StripMonPrefix(str string) string {
 	mp := config.GetConfig().MonetarySymbol
 	str = strings.ReplaceAll(str, mp, "")
+
+	if numReg == nil {
+		reg, err := regexp.Compile("[^0-9.]+")
+		if err != nil {
+			log.Println("misc.StripMonPrefix:ERROR: Failed to setup regex: err=", err)
+		} else {
+			numReg = reg
+		}
+	}
+	if numReg != nil {
+		str = numReg.ReplaceAllString(str, "")
+	}
 	return strings.TrimSpace(str)
 }

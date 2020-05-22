@@ -22,7 +22,7 @@ type PinoyConfig struct {
 	CookieSecretDbEntity      string // if set, retrieve cookie secret from thid db entity
 	StatsMonitorInterval      int    // minutes, report server stats
 	RoomStatusMonitorInterval int    // minutes, check room status for rooms to be checked out
-	CheckoutGracePeriod       int    // minutes, grace period for customer to checkout
+	CheckoutGracePeriod       int    // minutes, grace period for customer to checkout, warning to frontpage when checkout time within this period
 	MonetarySymbol            string // prefix for money, ex: "$" or "₱"
 }
 

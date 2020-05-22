@@ -4,6 +4,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"sort"
+	"strings"
 
 	"github.com/bluelamar/pinoy/database"
 	"github.com/bluelamar/pinoy/misc"
@@ -63,6 +65,7 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 		_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 		return
 	}
+
 	rrds := make([]RoomDetails, len(rrs))
 	for k, v := range rrs {
 		val := v.(map[string]interface{})
@@ -80,6 +83,11 @@ func Rooms(w http.ResponseWriter, r *http.Request) {
 		}
 		rrds[k] = rrd
 	}
+	sort.SliceStable(rrds, func(i, j int) bool {
+		rdi := rrds[i]
+		rdj := rrds[j]
+		return strings.Compare(rdi.RoomNum, rdj.RoomNum) < 0
+	})
 
 	tblData := RoomDetailDataTable{
 		sessDetails,
@@ -231,7 +239,7 @@ func UpdRoom(w http.ResponseWriter, r *http.Request) {
 		update := true
 		var rMap *map[string]interface{}
 		var err error
-		rMap, err = database.DbwRead(RoomsEntity, roomNum[0])
+		rMap, err = database.DbwRead(RoomsEntity, roomNum[0]) // FIX TODO sort the rooms by room number
 		if err != nil {
 			log.Println("upd_room:POST: must be new room: num=", roomNum[0], " : err=", err)
 

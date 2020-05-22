@@ -693,6 +693,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		numGuests, _ := r.Form["num_guests"]
 		family, _ := r.Form["family"]
 		update, _ := r.Form["update"]
+		csrfVal, _ := r.Form[sessDetails.Sess.CsrfToken]
 
 		if (len(fname[0]) == 0 && len(lname[0]) == 0) || len(duration[0]) == 0 || len(roomNum[0]) == 0 || len(numGuests[0]) == 0 || len(family[0]) == 0 {
 			log.Println("register:POST: Missing form data")
@@ -703,6 +704,15 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		registration := true
 		if len(update) > 0 && update[0] == "update" {
 			registration = false
+		} else {
+			// validate the csrf token
+			tv := psession.MakeCsrfToken(sessDetails.Sess)
+			if len(csrfVal) == 0 || csrfVal[0] != tv {
+				log.Println("register:POST: form: missing or bad csrf")
+				sessDetails.Sess.Message = `Missing required fields in Registration`
+				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+				return
+			}
 		}
 
 		// set in db

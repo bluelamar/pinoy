@@ -20,12 +20,14 @@
     <tr><td>Number of Guests</td><td>
     <input required placeholder="Number of Guests" id="num_guests" type="number" min="1" max="5" value="{{.NumGuests}}" name="num_guests" />
     </td></tr>
+<!-- no longer support family
     <tr><td>Family?</td><td>
       <select id="family" name="family" >
         <option value="yes">yes</option>
         <option value="no">no</option>
       </select>
     </td></tr>
+-->
     <tr><td>Duration</td><td>
       {{$duration := .Duration}}
       <select value="{{.Duration}}" id="duration" name="duration" >

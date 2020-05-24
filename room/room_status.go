@@ -539,7 +539,8 @@ func calcRoomCost(duration int, rateClass, extraRate string, numExtraGuests int)
 		er, _ = strconv.ParseFloat(extraRate, 64)
 	}
 
-	totCost = totCost + (float64(duration) * er * float64(numExtraGuests))
+	//totCost = totCost + (float64(duration) * er * float64(numExtraGuests))
+	totCost = totCost + (er * float64(numExtraGuests))
 	return totCost, nil
 }
 
@@ -691,11 +692,11 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		duration, _ := r.Form["duration"]
 		roomNum, _ := r.Form["room_num"]
 		numGuests, _ := r.Form["num_guests"]
-		family, _ := r.Form["family"]
+		//family, _ := r.Form["family"]
 		update, _ := r.Form["update"]
 		csrfVal, _ := r.Form[sessDetails.Sess.CsrfToken]
 
-		if (len(fname[0]) == 0 && len(lname[0]) == 0) || len(duration[0]) == 0 || len(roomNum[0]) == 0 || len(numGuests[0]) == 0 || len(family[0]) == 0 {
+		if (len(fname[0]) == 0 && len(lname[0]) == 0) || len(duration[0]) == 0 || len(roomNum[0]) == 0 || len(numGuests[0]) == 0 {
 			log.Println("register:POST: Missing form data")
 			sessDetails.Sess.Message = `Missing required fields in Registration`
 			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
@@ -736,7 +737,8 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		numExtraGuests := int(0)
 		extraRate := ""
 		rMap, err := database.DbwRead(RoomsEntity, roomNum[0])
-		if family[0] == "no" {
+		//if family[0] == "no"
+		{
 			// get the roomSleepsNum for the room
 			roomSleepsNum := num
 			if err == nil {

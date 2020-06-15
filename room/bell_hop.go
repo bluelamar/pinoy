@@ -499,7 +499,7 @@ func ReportRoomHistory(w http.ResponseWriter, r *http.Request) {
 				vmj := resArray[j].(map[string]interface{})
 				if tsj, exists := vmj[roomHistoryTS]; exists {
 					timej, _ = tsj.(string)
-					return strings.Compare(timei, timej) < 0
+					return strings.Compare(timei, timej) > 0
 				}
 			}
 		}

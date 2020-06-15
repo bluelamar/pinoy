@@ -20,6 +20,7 @@ import (
 	"github.com/bluelamar/pinoy/misc"
 	"github.com/bluelamar/pinoy/psession"
 	"github.com/bluelamar/pinoy/room"
+	"github.com/bluelamar/pinoy/shift"
 	"github.com/bluelamar/pinoy/staff"
 	"github.com/client9/reopen"
 	"github.com/gorilla/context"
@@ -27,6 +28,8 @@ import (
 
 var logger reopen.WriteCloser
 var curRoomStati []room.RoomState
+var doCleanup bool = true // used by the runCleanup function
+var cleaners []misc.CleanerInterface
 
 // signout revokes authentication for a user
 func signout(w http.ResponseWriter, r *http.Request) {
@@ -198,6 +201,33 @@ func runDiags(cfg *config.PinoyConfig) {
 
 }
 
+func runMonthlyCleanup(cfg *config.PinoyConfig) {
+	// if it is day 30 then call cleanup impls
+	// be sure not to repeat every hour if it was already done
+	_, t := misc.TimeNow()
+	dayOfTheYear := t.YearDay()
+	cleanupTime := dayOfTheYear%30 == 0
+	if doCleanup == false {
+		if cleanupTime == false {
+			doCleanup = true
+		}
+		return
+	}
+
+	doCleanup = false
+	// run the cleanup impls
+	if cleaners == nil {
+		cleaners = make([]misc.CleanerInterface, 0)
+		var cleaner misc.CleanerInterface
+		cleaner = shift.NewCleaner()
+		cleaners = append(cleaners, cleaner)
+	}
+
+	for _, c := range cleaners {
+		go c.Cleanup(cfg, t)
+	}
+}
+
 func roomStati(w http.ResponseWriter, r *http.Request) {
 	bytesRepresentation, err := json.Marshal(curRoomStati)
 	if err != nil {
@@ -227,6 +257,7 @@ func runRoomCheck(cfg *config.PinoyConfig) {
 // perform inits on modules that are dependent on the database to be ready
 func doOneTimeInits() {
 	room.InitRoomStatus()
+	shift.BuildShiftList(true)
 }
 
 func main() {
@@ -309,6 +340,7 @@ func main() {
 			case <-statsTicker.C:
 				runDiags(cfg)
 				initDB(cfg)
+				runMonthlyCleanup(cfg)
 			case <-roomTicker.C:
 				if initDbErr != nil {
 					// upon startup db can take a minute or so to start so we catch
@@ -346,6 +378,7 @@ func main() {
 	http.HandleFunc("/desk/food", food.Food)
 	http.HandleFunc("/desk/purchase", food.Purchase)
 	http.HandleFunc("/desk/purchase_summary", food.PurchaseSummary)
+	http.HandleFunc("/desk/shiftdailyinfo", shift.DailyInfo)
 	http.HandleFunc("/manager/staff", staff.Staff)
 	http.HandleFunc("/manager/upd_staff", staff.UpdStaff)
 	http.HandleFunc("/manager/add_staff", staff.AddStaff)
@@ -361,6 +394,8 @@ func main() {
 	http.HandleFunc("/manager/upd_food", food.UpdFood)
 	http.HandleFunc("/manager/report_food_usage", food.ReportFoodUsage)
 	http.HandleFunc("/manager/backup_food_usage", food.BackupFoodUsage)
+	http.HandleFunc("/manager/shiftinfo", shift.Info)
+	http.HandleFunc("/manager/upd_shiftinfo", shift.UpdateShiftInfo)
 	http.HandleFunc("/manager/svc_stats", misc.SvcStats)
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("static/css"))))
 	err = http.ListenAndServe("127.0.0.1:8080", context.ClearHandler(http.DefaultServeMux)) // setting listening port

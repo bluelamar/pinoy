@@ -6,15 +6,29 @@ use pinoy
 db.rooms.createIndex( { "key": 1 }, { unique: true } )
 db.room_status.createIndex( { "key": 1 }, { unique: true } )
 db.room_rates.createIndex( { "key": 1 }, { unique: true } )
+
+// room usage summary
 db.room_usage.createIndex( { "key": 1 }, { unique: true } )
 db.room_usage_bkup_b.createIndex( { "key": 1 }, { unique: true } )
 db.room_usage_bkup_c.createIndex( { "key": 1 }, { unique: true } )
+
+// create the detailed room history
+db.room_hist.createIndex( { "key": 1 }, { unique: true } )
+db.room_hist_bkup_b.createIndex( { "key": 1 }, { unique: true } )
+db.room_hist_bkup_c.createIndex( { "key": 1 }, { unique: true } )
+
 db.food.createIndex( { "key": 1 }, { unique: true } )
 db.food_usage.createIndex( { "key": 1 }, { unique: true } )
 db.food_usage_b.createIndex( { "key": 1 }, { unique: true } )
 db.food_usage_c.createIndex( { "key": 1 }, { unique: true } )
+
 db.staff.createIndex( { "key": 1 }, { unique: true } )
 db.staff_hours.createIndex( { "key": 1 }, { unique: true } )
 db.staff_hours_bkup_b.createIndex( { "key": 1 }, { unique: true } )
 db.staff_hours_bkup_c.createIndex( { "key": 1 }, { unique: true } )
+
+db.shiftinfo.createIndex( { "key": 1 }, { unique: true } )
+db.shiftitem.createIndex( { shiftday: 1 } )
+db.shiftitem.createIndex( { day: 1 } )
+db.shiftitem.createIndex( { "key": 1 }, { unique: true } )
 

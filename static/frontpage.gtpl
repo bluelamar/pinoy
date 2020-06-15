@@ -36,6 +36,7 @@ roomStateTimer();
       <li><a href="/desk/room_status?register=booked" class="pinoylink">Booked Room Status</a></li>
       <li><a href="/desk/food" class="pinoylink">Order Food and Drink</a></li>
       <li><a href="/desk/report_staff_hours" class="pinoylink">Clock-in/Clock-out Staff</a></li>
+      <li><a href="/desk/shiftdailyinfo" class="pinoylink">View Shift Usage</a></li>
       {{if eq .Sess.Role "Manager"}}
       <p><b>Managerial Actions</b></p>
       <li><a href="/manager/report_room_history" class="pinoylink">Room History Report</a></li>
@@ -46,6 +47,7 @@ roomStateTimer();
       <li><a href="/manager/staff" class="pinoylink">Add or Update Staff</a></li>
       <li><a href="/manager/report_food_usage" class="pinoylink">Food Usage Report</a></li>
       <li><a href="/manager/upd_food" class="pinoylink">Add or Update Food Items</a></li>
+      <li><a href="/manager/shiftinfo" class="pinoylink">View Shift Settings</a></li>
       <li><a href="/manager/svc_stats" class="pinoylink">Server Statistics</a></li>
       {{end}}
     </ul>

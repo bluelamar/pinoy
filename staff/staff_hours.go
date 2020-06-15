@@ -2,6 +2,7 @@ package staff
 
 import (
 	"errors"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -545,7 +546,18 @@ func UpdateEmployeeHours(userid string, clockin bool, expHours int, sess *psessi
 				log.Println("UpdateEmployeeHours: detected missing clock-out of user=", userid,
 					" : last-clockin=", lastClockinTime, " : last clock-out=empty : last expected-hours=", (*rMap)["ExpectedHours"])
 			}
-			// did staff member not get clocked out?
+
+			// staff member did not clock out
+			cnt, _ := (*rMap)["ClockOutCnt"].(int)
+			(*rMap)["ClockOutCnt"] = cnt + 1
+			// reset their clock out time to prevent hitting this same issue all the time
+			hrs := time.Duration(lastExpHrs)
+			t := nowTime.Add(hrs * time.Hour)
+			lcoStr := fmt.Sprintf("%d-%02d-%02d %02d:%02d",
+				t.Year(), t.Month(), t.Day(),
+				t.Hour(), t.Minute())
+			(*rMap)["LastClockoutTime"] = lcoStr
+
 			total, _ := (*rMap)["TotalHours"].(float64)
 			total += lastExpHrs
 			(*rMap)["TotalHours"] = total
@@ -586,7 +598,7 @@ func UpdateEmployeeHours(userid string, clockin bool, expHours int, sess *psessi
 		return err
 	}
 	signInOut := " SIGNED-IN"
-	if clockin {
+	if !clockin {
 		signInOut = " SIGNED-OUT"
 	}
 	log.Println("UpdateEmployeeHours: updated hours: user=", userid, signInOut, " : record=", (*rMap))

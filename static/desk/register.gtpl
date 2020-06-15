@@ -35,6 +35,7 @@
       {{end}}
       </select>
     </td></tr>
+
     <tr><td>Room Number</td><td>
     <input readonly placeholder="Room Number" id="room_num" name="room_num" value="{{.RoomNum}}" />
     </td></tr></table>

@@ -15,6 +15,11 @@ import (
 var timeLocale *time.Location
 var numReg *regexp.Regexp
 
+// CleanerInterface cleanup implementations will implement Cleanup method
+type CleanerInterface interface {
+	Cleanup(cfg *config.PinoyConfig, now time.Time)
+}
+
 func GetLocale() *time.Location {
 	if timeLocale == nil {
 		secondsEastOfUTC := int((8 * time.Hour).Seconds())

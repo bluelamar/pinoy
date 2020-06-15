@@ -17,6 +17,7 @@ import (
 	"github.com/bluelamar/pinoy/database"
 	"github.com/bluelamar/pinoy/misc"
 	"github.com/bluelamar/pinoy/psession"
+	"github.com/bluelamar/pinoy/shift"
 	"github.com/bluelamar/pinoy/staff"
 )
 
@@ -62,6 +63,7 @@ type RoomState struct {
 	CheckoutTime   string
 	Rate           string
 	NumExtraGuests int
+	Overtime       int // count for each time customer asks for overtime
 	ExtraRate      string
 	Purchases      string // append food purchases here
 	PurchaseTotal  string // how many pesos spent
@@ -133,6 +135,7 @@ func xlateToRoomStatus(val map[string]interface{}) *RoomState {
 		rt = str.(string)
 	}
 	neg := misc.XtractIntField("NumExtraGuests", &val)
+	ot := misc.XtractIntField("Overtime", &val)
 	er := ""
 	if str, exists := val["ExtraRate"]; exists {
 		er = str.(string)
@@ -156,6 +159,7 @@ func xlateToRoomStatus(val map[string]interface{}) *RoomState {
 		CheckoutTime:   co,
 		Rate:           rt,
 		NumExtraGuests: neg,
+		Overtime:       ot,
 		ExtraRate:      er,
 		Purchases:      pur,
 		PurchaseTotal:  pt,
@@ -314,7 +318,7 @@ func RoomStatus(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CalcCheckoutTime(ciTime time.Time, duration string) (string, error) {
+func calcCheckoutTime(ciTime time.Time, duration string, overTimeCnt int) (string, error) {
 	// ex checkinTime: 2019-06-11 12:49
 	/*
 		start := time.Date(2009, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -329,6 +333,9 @@ func CalcCheckoutTime(ciTime time.Time, duration string) (string, error) {
 	durNum, err := strconv.Atoi(dnum)
 	if err != nil {
 		return "", err
+	}
+	if overTimeCnt > 0 {
+		durNum += overTimeCnt // overtime: add an hour
 	}
 	dnumUnit := 1
 	if dunit == "Days" {
@@ -410,12 +417,14 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 	(*rs)["GuestInfo"] = ""
 	(*rs)["NumGuests"] = int(0)
 	(*rs)["NumExtraGuests"] = int(0)
+	(*rs)["Overtime"] = int(0)
 	(*rs)["ExtraRate"] = ""
 	(*rs)["Duration"] = ""
 	(*rs)["CheckinTime"] = ""
 	(*rs)["CheckoutTime"] = ""
 	(*rs)["Purchase"] = ""
 	(*rs)["PurchaseTotal"] = ""
+	(*rs)["Cost"] = float64(0)
 	err = database.DbwUpdate(roomStatusEntity, "", rs)
 	if err != nil {
 		log.Println("checkout:ERROR: Failed to update room status for room=", room, " : err=", err)
@@ -479,7 +488,7 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 
 	// calculate the extra cost
 	// over_time * extra_cost per hour
-	cost, err := calcRoomCost(int(hours), rateClass, extraRate, numExtraGuests)
+	cost, _, err := calcRoomCost(int(hours), rateClass, extraRate, numExtraGuests, 0)
 	(*rs)[roomUsageTC] = cost + misc.XtractFloatField(roomUsageTC, rs)
 
 	err = database.DbwUpdate(roomUsageEntity, key, rs)
@@ -499,8 +508,9 @@ func checkoutRoom(room string, w http.ResponseWriter, r *http.Request, sessDetai
 
 /*
  * Returns the total cost by cycling thru the [hourRate=>cost] table
+ * 2nd return value is the biggest number hours matched from the rate-class
  */
-func getMaxByHours(dur int, rcMap map[int]float64) float64 {
+func getMaxByHours(dur int, rcMap map[int]float64) (float64, int) {
 	// which hourly rate applies? per day, 3 hours? 6 hours? etc
 	// iterate keys to find biggest hours that is <= than totHours
 	biggestHours := int(0)
@@ -512,25 +522,29 @@ func getMaxByHours(dur int, rcMap map[int]float64) float64 {
 	if biggestHours == 0 {
 		// didnt find a duration > 0 && < dur ? was dur == 0 or negative number?
 		log.Println("getMaxByHours:ERROR: no max found: dur=", dur)
-		return 0
+		return 0, 0
 	}
 	sum, _ := rcMap[biggestHours]
 	diff := dur - biggestHours
 	// repeat iterate keys to find biggest hours
 	if diff <= 0 {
-		return sum
+		return sum, biggestHours
 	}
-	return getMaxByHours(diff, rcMap) + sum
+	s, _ := getMaxByHours(diff, rcMap)
+	return s + sum, biggestHours
 }
 
-func calcRoomCost(duration int, rateClass, extraRate string, numExtraGuests int) (float64, error) {
+func calcRoomCost(duration int, rateClass, extraRate string, numExtraGuests int, overTimeCnt int) (float64, int, error) {
 	totCost := float64(0)
+	biggestHours := 0
+	overtimeCost := float64(0)
 	// given duration, parse Days or Hours time-units - xlate Days to 24 and Hours to 1, xtract the number and multiply
 	// have: totHours
 	if duration == -1 {
 		log.Println("calcRoomCost:ERROR: Failed to parse duration=", duration, " in rateclass=", rateClass)
 	} else if rcMap, ok := rateClassMap[rateClass]; ok { // map[int]float64
-		totCost = getMaxByHours(duration, rcMap) // float64
+		totCost, biggestHours = getMaxByHours(duration, rcMap) // float64
+		overtimeCost, _ = rcMap[1]                             // 1 hour rate
 	}
 
 	extraRate = misc.StripMonPrefix(extraRate)
@@ -540,8 +554,11 @@ func calcRoomCost(duration int, rateClass, extraRate string, numExtraGuests int)
 	}
 
 	//totCost = totCost + (float64(duration) * er * float64(numExtraGuests))
+	if overTimeCnt > 0 {
+		totCost += (overtimeCost * float64(overTimeCnt))
+	}
 	totCost = totCost + (er * float64(numExtraGuests))
-	return totCost, nil
+	return totCost, biggestHours, nil
 }
 
 // ParseDuration will parse duration, Days or Hours time-units - xlate Days to 24 and Hours to 1, xtract the number and multiply
@@ -690,6 +707,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		fname, _ := r.Form["first_name"]
 		lname, _ := r.Form["last_name"]
 		duration, _ := r.Form["duration"]
+		overtime, _ := r.Form["overtime"]
 		roomNum, _ := r.Form["room_num"]
 		numGuests, _ := r.Form["num_guests"]
 		//family, _ := r.Form["family"]
@@ -703,20 +721,23 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		registration := true
+		overTime := false
 		if len(update) > 0 && update[0] == "update" {
 			registration = false
-		} else {
-			// validate the csrf token
-			tv := psession.MakeCsrfToken(sessDetails.Sess)
-			if len(csrfVal) == 0 || csrfVal[0] != tv {
-				log.Println("register:POST: form: missing or bad csrf")
-				sessDetails.Sess.Message = `Missing required fields in Registration`
-				_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
-				return
+			if len(overtime) > 0 && overtime[0] == "yes" {
+				overTime = true
 			}
 		}
 
-		// set in db
+		// validate the csrf token
+		tv := psession.MakeCsrfToken(sessDetails.Sess)
+		if len(csrfVal) == 0 || csrfVal[0] != tv {
+			log.Println("register:POST: form: missing or bad csrf")
+			sessDetails.Sess.Message = `Missing required fields in Registration`
+			_ = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
+			return
+		}
+
 		// read room status record and reset as booked with customers name
 		rs, err := database.DbwRead(roomStatusEntity, roomNum[0])
 		if err != nil {
@@ -756,11 +777,18 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 		(*rs)["Duration"] = duration[0]
 
+		// keep count of overtime added
+		ovTimeCnt := misc.XtractIntField("Overtime", rs)
+		if overTime {
+			ovTimeCnt++
+			(*rs)["Overtime"] = ovTimeCnt
+		}
+
 		nowStr, nowTime := misc.TimeNow()
 		var checkOutTime string
 		if registration {
 			(*rs)["CheckinTime"] = nowStr
-			checkOutTime, err = CalcCheckoutTime(nowTime, duration[0])
+			checkOutTime, err = calcCheckoutTime(nowTime, duration[0], ovTimeCnt)
 			(*rs)["CheckoutTime"] = checkOutTime
 		} else {
 			// this is an update to the registration - the checkin time remains the same but the checkout could have changed
@@ -771,16 +799,16 @@ func Register(w http.ResponseWriter, r *http.Request) {
 				err = psession.SendErrorPage(sessDetails, w, "static/frontpage.gtpl", http.StatusAccepted)
 				return
 			}
-			checkOutTime, err = CalcCheckoutTime(ciTime, duration[0])
+			checkOutTime, err = calcCheckoutTime(ciTime, duration[0], ovTimeCnt)
 			(*rs)["CheckoutTime"] = checkOutTime
 			nowStr = (*rs)["CheckinTime"].(string) // use original checkin time
 		}
 
 		dur := ParseDuration(duration[0])
 		rateClass, _ := (*rMap)["RateClass"].(string)
-		totCost, err := calcRoomCost(dur, rateClass, extraRate, numExtraGuests)
+		totCost, timeUnitPerRateClass, err := calcRoomCost(dur, rateClass, extraRate, numExtraGuests, ovTimeCnt)
 		if err != nil {
-			log.Println("register:ERROR: Failed to calculate room cost: duration=", duration[0], " in rateclass=", rateClass, " : room=", roomNum[0])
+			log.Println("register:ERROR: Failed to calculate room cost: duration=", duration[0], " in rateclass=", rateClass, " : biggest-time-unit=", timeUnitPerRateClass, " : room=", roomNum[0])
 		}
 
 		oldCost, _ := (*rs)["Cost"].(float64)
@@ -811,6 +839,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			CheckoutTime:   checkOutTime,
 			Rate:           (*rs)["Rate"].(string),
 			NumExtraGuests: numExtraGuests,
+			Overtime:       ovTimeCnt,
 			ExtraRate:      extraRate,
 			Purchases:      "", // (*rs)["Purchases"].(string),
 			PurchaseTotal:  "", // (*rs)["PurchaseTotal"].(string),
@@ -843,11 +872,103 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 		// update the total cost
 		// for update, need the difference between the old cost and the new cost - that difference would be added to room usage total cost
-		(*rs)[roomUsageTC] = totCost - oldCost + misc.XtractFloatField(roomUsageTC, rs)
+		// account for overtime if it was added
+		newTotCost := totCost - oldCost + misc.XtractFloatField(roomUsageTC, rs)
+		(*rs)[roomUsageTC] = newTotCost
 
 		err = database.DbwUpdate(roomUsageEntity, key, rs)
 		if err != nil {
 			log.Println("register:ERROR: Failed to update room usage for room=", roomNum[0], " : err=", err)
+		}
+
+		// update the shift records for the room
+
+		// shift total cost record: key: <shift-day>-room : total cost -> Total; number of times rooms used in the shift -> Volume
+		dayOfYear, hourOfDay, shiftNum, _ := shift.CalcShift()
+		dayOfYear = shift.AdjustDayForXOverShift(dayOfYear, hourOfDay, shiftNum)
+		shiftID := fmt.Sprintf("%d-%d", dayOfYear, shiftNum)
+
+		// read the shift total cost record to create or update it
+		shiftTotalID := shiftID + "-room"
+		// need the Volume and Total
+		key = ""
+		totRoomCost := totCost - oldCost
+		rs, err = database.DbwRead(shift.ShiftItemEntity, shiftTotalID)
+		if err != nil {
+			// new shift item
+			key = shiftTotalID
+			rs = shift.MakeShiftMap(shiftNum, dayOfYear, shiftID, "room", "", "totalcost", nowStr)
+			(*rs)["Total"] = totRoomCost
+		} else {
+			volume := misc.XtractIntField("Volume", rs)
+			tot := misc.XtractFloatField("Total", rs)
+			// adjustment to room cost?
+			if registration == true {
+				totRoomCost += tot
+				volume++
+			} else {
+				newCost := tot - oldCost + totCost
+				totRoomCost = newCost
+			}
+
+			(*rs)["Volume"] = volume
+			(*rs)["Total"] = totRoomCost
+		}
+
+		// update the total-cost/volume record
+		err = database.DbwUpdate(shift.ShiftItemEntity, key, rs)
+		if err != nil {
+			log.Println("register:ERROR: Failed to update room shift: shift-day=", shiftTotalID, " : hour-of-day=", hourOfDay, " : total cost=", (*rs)["Total"], " : volume=", (*rs)["Volume"], " : room=", roomNum[0], " : err=", err)
+		}
+
+		// number of times room of certain duration with overtime record: key: shift-day-<time-unit> : number of times this was called - Volume
+		if overTime {
+			shiftVolID := fmt.Sprintf("%s-%s", shiftID, duration[0])
+			key = ""
+			rs, err = database.DbwRead(shift.ShiftItemEntity, shiftVolID)
+			if err != nil {
+				// new shift item
+				key = shiftVolID
+				rs = shift.MakeShiftMap(shiftNum, dayOfYear, shiftID, "room", duration[0], "overtime", nowStr)
+			} else {
+				volume := misc.XtractIntField("Volume", rs)
+				volume++
+				(*rs)["Volume"] = volume
+			}
+
+			// update the volume per duration record
+			err = database.DbwUpdate(shift.ShiftItemEntity, key, rs)
+			if err != nil {
+				log.Println("register:ERROR: Failed to update room shift duration record: : shift-day=", shiftVolID, " : hour-of-day=", hourOfDay, " : volume=", (*rs)["Volume"], " : room=", roomNum[0], " : err=", err)
+			}
+		}
+
+		// number of times room of certain duration for rate-class record: key: shift-day-<rate-class>-<time-unit> : number times this was called
+		shiftRcVolID := fmt.Sprintf("%s-%s-%s", shiftID, rateClass, duration[0])
+		key = ""
+		totRoomCost = totCost - oldCost
+		rs, err = database.DbwRead(shift.ShiftItemEntity, shiftRcVolID)
+		if err != nil {
+			// new shift item
+			key = shiftRcVolID
+			rs = shift.MakeShiftMap(shiftNum, dayOfYear, shiftID, "room", duration[0], rateClass, nowStr)
+			(*rs)["Total"] = totRoomCost
+		} else {
+			volume := misc.XtractIntField("Volume", rs)
+			tot := misc.XtractFloatField("Total", rs)
+			totRoomCost += tot
+			// adjustment to room cost?
+			if registration == true {
+				volume++
+			}
+			(*rs)["Volume"] = volume
+			(*rs)["Total"] = totRoomCost
+		}
+
+		// update the volume per duration per rate-class record
+		err = database.DbwUpdate(shift.ShiftItemEntity, key, rs)
+		if err != nil {
+			log.Println("register:ERROR: Failed to update room shift duration per rate-class record: : shift-day=", shiftRcVolID, " : hour-of-day=", hourOfDay, " : volume=", (*rs)["Volume"], " : room=", roomNum[0], " : err=", err)
 		}
 
 		var oldCostStr string = ""
@@ -859,6 +980,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ReportRoomUsage is the REST API handler for GET requests
 func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 	sessDetails := psession.GetSessDetails(r, "Room Usage", "Room Usage page to Pinoy Lodge")
@@ -967,6 +1089,7 @@ func ReportRoomUsage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// BackupRoomUsage is the REST API to perform the backup of room usage
 func BackupRoomUsage(w http.ResponseWriter, r *http.Request) {
 	misc.IncrRequestCnt()
 	// check session expiration and authorization

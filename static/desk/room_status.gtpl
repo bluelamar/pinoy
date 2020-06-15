@@ -20,7 +20,7 @@
 {{if .OpenRoomsOnly}}
   <th>Register</th>
 {{else}}
-  <th>Guest Name</th><th>Cost ({{.MonetarySymbol}})</th><th>Number of Guests</th><th>Extra Guests</th><th>Hourly Rate per Extra Guest</th><th>Duration</th>
+  <th>Guest Name</th><th>Cost ({{.MonetarySymbol}})</th><th>Number of Guests</th><th>Extra Guests</th><th>Hourly Rate per Extra Guest</th><th>Duration</th><th>Overtime count</th>
   <th>Check in time</th><th>Check out time</th><th>Check Out</th><th>Purchase Items</th><th>Update</th>
 {{end}}
 </tr>
@@ -30,7 +30,7 @@
 {{if eq .Status "open"}}
   <td><a id="registration" class="button" href="/desk/register?room={{.RoomNum}}&rate={{.Rate}}&reg=checkin">Register</a></td>
 {{else}}
-  <td>{{.GuestInfo}}</td><td>{{.Cost}}</td><td>{{.NumGuests}}</td><td>{{.NumExtraGuests}}</td><td>{{.ExtraRate}}</td><td>{{.Duration}}</td><td>{{.CheckinTime}}</td><td>{{.CheckoutTime}}</td>
+  <td>{{.GuestInfo}}</td><td>{{.Cost}}</td><td>{{.NumGuests}}</td><td>{{.NumExtraGuests}}</td><td>{{.ExtraRate}}</td><td>{{.Duration}}</td><td>{{.Overtime}}</td><td>{{.CheckinTime}}</td><td>{{.CheckoutTime}}</td>
   <td><a id="registration" class="button" href="/desk/register?room={{.RoomNum}}&reg=checkout">Check Out</a></td>
   <td><a id="purchase" class="button" href="/desk/food?room={{.RoomNum}}">Purchase</a></td>
   <td><a id="update" class="button" href="/desk/register?room={{.RoomNum}}&reg=update&rate={{.Rate}}">Update</a></td>

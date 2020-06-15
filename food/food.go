@@ -1,6 +1,7 @@
 package food
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/bluelamar/pinoy/config"
+	"github.com/bluelamar/pinoy/shift"
 
 	"github.com/bluelamar/pinoy/database"
 	"github.com/bluelamar/pinoy/misc"
@@ -443,6 +445,7 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 		(*fue)[foodUsageTO] = sum
 
 		tcost := misc.XtractFloatField(foodUsageTC, fue)
+		pr := float64(0)
 		foodMap, err := database.DbwRead(foodEntity, id)
 		if err != nil || foodMap == nil {
 			log.Println("purchase:ERROR: Failed to read food item=", id, " : err=", err)
@@ -450,7 +453,7 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 			foodItem := makeFoodItem(*foodMap)
 			purMap := make(map[string]interface{})
 			purMap["price"] = misc.StripMonPrefix(foodItem.Price) // strip the "$" from the price
-			pr := misc.XtractFloatField("price", &purMap)
+			pr = misc.XtractFloatField("price", &purMap)
 			tcost = tcost + (pr * float64(quant))
 		}
 		(*fue)[foodUsageTC] = tcost
@@ -459,6 +462,60 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 		err = database.DbwUpdate(foodUsageEntity, key, fue)
 		if err != nil {
 			log.Println("purchase:ERROR: Failed to update food usage for room=", roomNum[0], " : item=", id, " : err=", err)
+		}
+
+		// update the shiftinfo for food purchases
+		nowStr, _ := misc.TimeNow()
+		// shift total cost record: key: <shift-day>-food : total cost -> Total; number of times food used in the shift -> Volume
+		dayOfYear, hourOfDay, shiftNum, _ := shift.CalcShift()
+		dayOfYear = shift.AdjustDayForXOverShift(dayOfYear, hourOfDay, shiftNum)
+		shiftID := fmt.Sprintf("%d-%d", dayOfYear, shiftNum)
+		// read the shift total cost record to create or update it
+		shiftTotalID := shiftID + "-food"
+		// need the Volume and Total
+		key = ""
+		totFoodCost := (pr * float64(quant))
+		rs, err := database.DbwRead(shift.ShiftItemEntity, shiftTotalID)
+		if err != nil {
+			// new shift item
+			key = shiftTotalID
+			rs = shift.MakeShiftMap(shiftNum, dayOfYear, shiftID, "food", "All Items", "totalcost", nowStr)
+			(*rs)["Volume"] = quant
+			(*rs)["Total"] = totFoodCost
+		} else {
+			volume := misc.XtractIntField("Volume", rs)
+			tot := misc.XtractFloatField("Total", rs)
+			volume += quant
+			(*rs)["Volume"] = volume // number of purchases
+			(*rs)["Total"] = totFoodCost + tot
+		}
+		// update the total-cost/volume record
+		err = database.DbwUpdate(shift.ShiftItemEntity, key, rs)
+		if err != nil {
+			log.Println("purchase:ERROR: Failed to update food usage for shift total purchases: shift-day=", shiftTotalID, " : hour-of-day=", hourOfDay, " : total cost=", (*rs)["Total"], " : volume=", (*rs)["Volume"], " : item=", id, " : err=", err)
+		}
+
+		// number of food items of certain size record: key: shift-day-<item:size> : number of times this was called - Volume
+		shiftVolID := fmt.Sprintf("%s-%s", shiftID, id)
+		key = ""
+		rs, err = database.DbwRead(shift.ShiftItemEntity, shiftVolID)
+		if err != nil {
+			// new shift item
+			key = shiftVolID
+			rs = shift.MakeShiftMap(shiftNum, dayOfYear, shiftID, "food", id, "purchases", nowStr)
+			(*rs)["Volume"] = quant
+			(*rs)["Total"] = totFoodCost
+		} else {
+			volume := misc.XtractIntField("Volume", rs)
+			(*rs)["Volume"] = volume + quant // number of times item was purchased
+			tot := misc.XtractFloatField("Total", rs)
+			(*rs)["Total"] = totFoodCost + tot // total cost for this item during the shift
+		}
+
+		// update the volume per duration record
+		err = database.DbwUpdate(shift.ShiftItemEntity, key, rs)
+		if err != nil {
+			log.Println("purchase:ERROR: Failed to update food usage shift volume record: : shift-day=", shiftVolID, " : hour-of-day=", hourOfDay, " : volume=", (*rs)["Volume"], " : room=", roomNum[0], " : err=", err)
 		}
 
 		http.Redirect(w, r, "/desk/purchase_summary?room="+roomNum[0]+"&item="+id+"&quantity="+quantity[0], http.StatusFound)

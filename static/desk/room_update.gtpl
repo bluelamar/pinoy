@@ -40,11 +40,20 @@
       {{end}}
       </select>
     </td></tr>
+
+    <tr><td>Add Overtime</td><td>
+      <select id="overtime" name="overtime" >
+        <option value="no">no</option>
+        <option value="yes">yes</option>
+      </select>
+    </td></tr>
+
     <tr><td>Room Number</td><td>
     <input readonly placeholder="Room Number" id="room_num" name="room_num" value="{{.RoomNum}}" />
     </td></tr>
   </table>
     <input hidden id="update" name="update" value="update" />
+    <input type="hidden" name="{{.Sess.CsrfToken}}" value="{{.Sess.CsrfParam}}" />
     <input type="submit" name="commit" value="Update" />
   </form>
 

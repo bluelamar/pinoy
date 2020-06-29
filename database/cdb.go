@@ -225,7 +225,7 @@ func (pDbInt *CDBInterface) Delete(entity, id, rev string) error {
 	return checkResultError(&result, err)
 }
 
-func (pDbInt *CDBInterface) Find(entity, field, value string) ([]interface{}, error) {
+func (pDbInt *CDBInterface) Find(entity, field string, value interface{}) ([]interface{}, error) {
 	// curl -v -H "Content-Type: application/json" --cookie "cdbcookies" http://localhost:5984/testxyz/_find -X POST -d $SEL
 	// SEL='{"selector":{"shape":{"$eq":"pyramid"}}}'
 	/*
@@ -238,7 +238,7 @@ func (pDbInt *CDBInterface) Find(entity, field, value string) ([]interface{}, er
 			} */
 	entity = entity + "/_find"
 	//val := `{"selector":{"` + field + `":{"$eq":"` + value + `"}}}`
-	eqm := map[string]string{"$eq": value} // make(map[string]interface{})
+	eqm := map[string]interface{}{"$eq": value} // make(map[string]interface{})
 	//eqm["$eq"] = value
 	fldm := map[string]interface{}{field: eqm}
 	//fldm[field] = eqm

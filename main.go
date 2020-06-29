@@ -201,12 +201,12 @@ func runDiags(cfg *config.PinoyConfig) {
 
 }
 
-func runMonthlyCleanup(cfg *config.PinoyConfig) {
-	// if it is day 30 then call cleanup impls
+func runWeeklyCleanup(cfg *config.PinoyConfig) {
+	// if it is day 7 then call cleanup impls
 	// be sure not to repeat every hour if it was already done
 	_, t := misc.TimeNow()
 	dayOfTheYear := t.YearDay()
-	cleanupTime := dayOfTheYear%30 == 0
+	cleanupTime := dayOfTheYear%7 == 0
 	if doCleanup == false {
 		if cleanupTime == false {
 			doCleanup = true
@@ -340,7 +340,7 @@ func main() {
 			case <-statsTicker.C:
 				runDiags(cfg)
 				initDB(cfg)
-				runMonthlyCleanup(cfg)
+				runWeeklyCleanup(cfg)
 			case <-roomTicker.C:
 				if initDbErr != nil {
 					// upon startup db can take a minute or so to start so we catch

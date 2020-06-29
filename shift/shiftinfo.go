@@ -75,12 +75,31 @@ func NewCleaner() *Cleanup {
 
 // Cleanup is called by main timer
 func (c *Cleanup) Cleanup(cfg *config.PinoyConfig, now time.Time) {
-	// FIX TODO need to cleanup the DB
-	// if day==7, in January so delete all days >= (365-7)
+	// need to cleanup the DB
+	// clean up everything up to the previous 7 days
+	// if day==7, in January so delete all days <= (365-7)
 	// else clean up everything up to the previous 7 days
-	log.Println("shiftinfo: Start cleanup now=", now, " : day-of-year=", now.YearDay())
-	// FIX gather entities where the field Day == dayOfYear, find using index for Day, should get room and food entities for each shift
+	log.Println("shiftinfo: Start weekly cleanup now=", now, " : day-of-year=", now.YearDay())
+	// gather entities where the field Day == dayOfYear, find using index for Day, should get room and food entities for each shift
 	// delete each one
+	dayOfYear, hourOfDay, shiftNum, t := CalcShift()
+	endDay := dayOfYear - 7
+	if dayOfYear < 8 {
+		endDay = 365 - 7
+	}
+	dayOfYear = AdjustDayForXOverShift(t.Year(), dayOfYear, hourOfDay, shiftNum)
+
+	for i := 0; i < 7; i++ {
+		ind := endDay - i
+		mVals, err := database.DbwFind(ShiftItemEntity, "Day", ind)
+		if err != nil {
+			break
+		}
+		for _, m := range mVals {
+			val := m.(map[string]interface{})
+			database.DbwDelete(ShiftItemEntity, &val)
+		}
+	}
 }
 
 // BuildShiftList will set up the shift info used for the shift reporting

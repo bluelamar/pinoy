@@ -98,8 +98,8 @@ func (pDbInt *MDBInterface) Read(entity, id string) (*map[string]interface{}, er
 		return nil, errors.New("failed to find entity=" + entity)
 	}
 
-	opts := options.FindOne().SetSort(bson.D{{"_id", 1}})
-	sr := coll.FindOne(ctx, bson.D{{"key", id}}, opts)
+	opts := options.FindOne().SetSort(bson.D{{Key: "_id", Value: 1}})
+	sr := coll.FindOne(ctx, bson.D{{Key: "key", Value: id}}, opts)
 	if sr == nil {
 		return nil, errors.New("failed to find id")
 	}
@@ -129,16 +129,16 @@ func (pDbInt *MDBInterface) Update(entity, id, rev string, val map[string]interf
 	var filter bson.D
 	if id == "" {
 		if k, ok := val["key"].(string); ok {
-			filter = bson.D{{"key", k}}
+			filter = bson.D{{Key: "key", Value: k}}
 		} else if oid, ok := val["_id"].(primitive.ObjectID); ok {
-			filter = bson.D{{"_id", oid}}
+			filter = bson.D{{Key: "_id", Value: oid}}
 		} else {
 			return "", errors.New("missing key field")
 		}
 	} else {
-		filter = bson.D{{"key", id}}
+		filter = bson.D{{Key: "key", Value: id}}
 	}
-	update := bson.D{{"$set", val}}
+	update := bson.D{{Key: "$set", Value: val}}
 	ctx, cf := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
 	defer cf()
 	coll := pDbInt.client.Database(pDbInt.cfg.DbName).Collection(entity)
@@ -166,7 +166,7 @@ func (pDbInt *MDBInterface) Delete(entity, id, rev string) error {
 	ctx, cf := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
 	defer cf()
 	coll := pDbInt.client.Database(pDbInt.cfg.DbName).Collection(entity)
-	res, err := coll.DeleteOne(ctx, bson.D{{"key", id}}, opts)
+	res, err := coll.DeleteOne(ctx, bson.D{{Key: "key", Value: id}}, opts)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (pDbInt *MDBInterface) Delete(entity, id, rev string) error {
 }
 
 // Find the list of entities matching the field with the given value
-func (pDbInt *MDBInterface) Find(entity, field, value string) ([]interface{}, error) {
+func (pDbInt *MDBInterface) Find(entity, field string, value interface{}) ([]interface{}, error) {
 
 	ctx, cf := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
 	defer cf()
@@ -189,7 +189,7 @@ func (pDbInt *MDBInterface) Find(entity, field, value string) ([]interface{}, er
 	if field == "" {
 		cursor, err = coll.Find(ctx, bson.M{})
 	} else {
-		cursor, err = coll.Find(ctx, bson.D{{field, value}})
+		cursor, err = coll.Find(ctx, bson.D{{Key: field, Value: value}})
 	}
 	if err != nil {
 		return nil, normalizeError(err)
@@ -251,7 +251,7 @@ func (pDbInt *MDBInterface) DeleteM(entity string, rMap *map[string]interface{})
 		ctx, cf := context.WithTimeout(context.Background(), time.Duration(pDbInt.cfg.DbCommTimeout)*time.Second)
 		defer cf()
 		coll := pDbInt.client.Database(pDbInt.cfg.DbName).Collection(entity)
-		res, err := coll.DeleteOne(ctx, bson.D{{"_id", id}}, opts)
+		res, err := coll.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}}, opts)
 		if err != nil {
 			return err
 		}

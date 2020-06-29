@@ -28,7 +28,6 @@ db.staff_hours_bkup_b.createIndex( { "key": 1 }, { unique: true } )
 db.staff_hours_bkup_c.createIndex( { "key": 1 }, { unique: true } )
 
 db.shiftinfo.createIndex( { "key": 1 }, { unique: true } )
-db.shiftitem.createIndex( { shiftday: 1 } )
-db.shiftitem.createIndex( { day: 1 } )
-db.shiftitem.createIndex( { "key": 1 }, { unique: true } )
+db.shiftitem.createIndex( { "Shiftday": 1 } )
+db.shiftitem.createIndex( { "Day": 1 } )
 

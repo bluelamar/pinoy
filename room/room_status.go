@@ -884,8 +884,8 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		// update the shift records for the room
 
 		// shift total cost record: key: <shift-day>-room : total cost -> Total; number of times rooms used in the shift -> Volume
-		dayOfYear, hourOfDay, shiftNum, _ := shift.CalcShift()
-		dayOfYear = shift.AdjustDayForXOverShift(dayOfYear, hourOfDay, shiftNum)
+		dayOfYear, hourOfDay, shiftNum, t := shift.CalcShift()
+		dayOfYear = shift.AdjustDayForXOverShift(t.Year(), dayOfYear, hourOfDay, shiftNum)
 		shiftID := fmt.Sprintf("%d-%d", dayOfYear, shiftNum)
 
 		// read the shift total cost record to create or update it

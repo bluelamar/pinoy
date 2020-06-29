@@ -13,7 +13,7 @@ type DBInterface interface {
 	ReadAll(entity string) ([]interface{}, error)
 	Update(entity, id, rev string, val map[string]interface{}) (string, error)
 	Delete(entity, id, rev string) error
-	Find(entity, field, value string) ([]interface{}, error)
+	Find(entity, field string, value interface{}) ([]interface{}, error)
 
 	DeleteM(entity string, rMap *map[string]interface{}) error
 	UpdateM(entity, key string, rMap *map[string]interface{}) error
@@ -64,6 +64,6 @@ func DbwReadAll(entity string) ([]interface{}, error) {
 }
 
 // DbwFind finds a list of entities with the given field containing the given value
-func DbwFind(entity, field, value string) ([]interface{}, error) {
+func DbwFind(entity, field string, value interface{}) ([]interface{}, error) {
 	return (dbInt).Find(entity, field, value)
 }

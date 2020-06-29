@@ -465,10 +465,10 @@ func Purchase(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// update the shiftinfo for food purchases
-		nowStr, _ := misc.TimeNow()
+		nowStr, t := misc.TimeNow()
 		// shift total cost record: key: <shift-day>-food : total cost -> Total; number of times food used in the shift -> Volume
 		dayOfYear, hourOfDay, shiftNum, _ := shift.CalcShift()
-		dayOfYear = shift.AdjustDayForXOverShift(dayOfYear, hourOfDay, shiftNum)
+		dayOfYear = shift.AdjustDayForXOverShift(t.Year(), dayOfYear, hourOfDay, shiftNum)
 		shiftID := fmt.Sprintf("%d-%d", dayOfYear, shiftNum)
 		// read the shift total cost record to create or update it
 		shiftTotalID := shiftID + "-food"
